@@ -30,6 +30,12 @@ namespace ZaloMultiWorkspace.Models
         private bool _isActiveChatMatch;
     }
 
+    public enum AccountLayoutMode
+    {
+        Horizontal = 0,
+        Vertical = 1
+    }
+
     public class AppSettings
     {
         public const string DefaultPin = "1234";
@@ -79,6 +85,9 @@ namespace ZaloMultiWorkspace.Models
             // Khung giờ qua đêm (vd 22:00 - 07:00) hoặc trong ngày (vd 12:00 - 13:30)
             return start <= end ? (t >= start && t < end) : (t >= start || t < end);
         }
+
+        /// <summary>Bố cục danh sách tài khoản: Horizontal (tab ngang, mặc định) / Vertical (thanh dọc bên trái)</summary>
+        public AccountLayoutMode AccountLayout { get; set; } = AccountLayoutMode.Horizontal;
 
         /// <summary>Chế độ giao diện: System (theo Windows, mặc định) / Light / Dark</summary>
         public Services.AppThemeMode ThemeMode { get; set; } = Services.AppThemeMode.System;

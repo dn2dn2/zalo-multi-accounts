@@ -224,6 +224,15 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             }
         }
 
+        /// <summary>Đổi bố cục tài khoản áp dụng và lưu ngay, không cần bấm Lưu</summary>
+        private void LayoutSegment_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && Enum.TryParse(fe.Tag?.ToString(), out AccountLayoutMode mode))
+            {
+                _mainViewModel.SetAccountLayout(mode);
+            }
+        }
+
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
             DialogResult = false;

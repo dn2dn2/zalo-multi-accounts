@@ -118,6 +118,16 @@ namespace ZaloMultiWorkspace.Views
             }
         }
 
+        /// <summary>Lăn chuột trên dải tab để cuộn ngang khi có nhiều tài khoản</summary>
+        private void AccountTabScroller_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (sender is ScrollViewer sv && sv.ScrollableWidth > 0)
+            {
+                sv.ScrollToHorizontalOffset(sv.HorizontalOffset - e.Delta / 2.0);
+                e.Handled = true;
+            }
+        }
+
         private async void AccountItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is FrameworkElement fe && fe.Tag is ZaloAccountProfile profile)

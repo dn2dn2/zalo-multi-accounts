@@ -84,8 +84,8 @@ namespace ZaloMultiWorkspace.Models
         [BsonIgnore]
         public string ProxySignature => $"{ProxyType}|{ProxyHost}|{ProxyPort}|{ProxyAddress}|{ProxyUser}|{ProxyPass}";
 
-        [BsonIgnore]
         [ObservableProperty]
+        [property: BsonIgnore] // phải gắn lên property sinh ra thì LiteDB mới bỏ qua
         private string _activeChatName = string.Empty;
 
         [ObservableProperty]
@@ -105,17 +105,17 @@ namespace ZaloMultiWorkspace.Models
 
         // --- Thuộc tính Runtime (Không lưu cứng trạng thái phiên tạm thời vào DB) ---
 
-        [BsonIgnore]
         [ObservableProperty]
+        [property: BsonIgnore] // phải gắn lên property sinh ra thì LiteDB mới bỏ qua
         [NotifyPropertyChangedFor(nameof(HasUnread))]
         private int _unreadCount = 0;
 
-        [BsonIgnore]
         [ObservableProperty]
+        [property: BsonIgnore] // phải gắn lên property sinh ra thì LiteDB mới bỏ qua
         private bool _isHibernated = false;
 
-        [BsonIgnore]
         [ObservableProperty]
+        [property: BsonIgnore] // phải gắn lên property sinh ra thì LiteDB mới bỏ qua
         [NotifyPropertyChangedFor(nameof(PingChipText))]
         [NotifyPropertyChangedFor(nameof(PingLevel))]
         [NotifyPropertyChangedFor(nameof(NetworkTooltipStatus))]
@@ -129,8 +129,8 @@ namespace ZaloMultiWorkspace.Models
         [NotifyPropertyChangedFor(nameof(NetworkTooltipStatus))]
         private bool _isPingFailed = false;
 
-        [BsonIgnore]
         [ObservableProperty]
+        [property: BsonIgnore] // phải gắn lên property sinh ra thì LiteDB mới bỏ qua
         private double _ramUsageMb = 0;
 
         [ObservableProperty]
@@ -205,20 +205,20 @@ namespace ZaloMultiWorkspace.Models
             return null;
         }
 
-        [BsonIgnore]
         [ObservableProperty]
+        [property: BsonIgnore] // phải gắn lên property sinh ra thì LiteDB mới bỏ qua
         [NotifyPropertyChangedFor(nameof(PingDisplayText))]
         [NotifyPropertyChangedFor(nameof(PingChipText))]
         [NotifyPropertyChangedFor(nameof(PingLevel))]
         [NotifyPropertyChangedFor(nameof(NetworkTooltipStatus))]
         private long _pingMs = -1;
 
-        [BsonIgnore]
         [ObservableProperty]
+        [property: BsonIgnore] // phải gắn lên property sinh ra thì LiteDB mới bỏ qua
         private bool _isSelected = false;
 
-        [BsonIgnore]
         [ObservableProperty]
+        [property: BsonIgnore] // phải gắn lên property sinh ra thì LiteDB mới bỏ qua
         private string _statusMessage = string.Empty;
 
         [BsonIgnore]

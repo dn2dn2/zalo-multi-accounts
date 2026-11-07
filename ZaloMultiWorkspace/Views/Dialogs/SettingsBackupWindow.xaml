@@ -145,6 +145,26 @@
                         </StackPanel>
                     </Border>
 
+                    <TextBlock Text="BỐ CỤC TÀI KHOẢN" Style="{StaticResource SectionTitle}"/>
+                    <Border HorizontalAlignment="Left" Background="{DynamicResource Brush.Bg.Control}" BorderBrush="{DynamicResource Brush.Border.Control}"
+                            BorderThickness="1" CornerRadius="8" Padding="3" Margin="0,0,0,18">
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Tab ngang: icon "dock trái" xoay 90 độ thành "dock trên" -->
+                            <RadioButton Tag="Horizontal" GroupName="AccountLayout" ToolTip="Ngang (tab phía trên)" Style="{StaticResource ThemeSegmentStyle}"
+                                         IsChecked="{Binding IsHorizontalLayout, Mode=OneWay}" Click="LayoutSegment_Click"
+                                         AutomationProperties.Name="Bố cục ngang">
+                                <TextBlock Text="&#xE90C;">
+                                    <TextBlock.LayoutTransform>
+                                        <RotateTransform Angle="90"/>
+                                    </TextBlock.LayoutTransform>
+                                </TextBlock>
+                            </RadioButton>
+                            <RadioButton Content="&#xE90C;" Tag="Vertical" GroupName="AccountLayout" ToolTip="Dọc (thanh bên trái)" Style="{StaticResource ThemeSegmentStyle}" Margin="2,0,0,0"
+                                         IsChecked="{Binding IsVerticalLayout, Mode=OneWay}" Click="LayoutSegment_Click"
+                                         AutomationProperties.Name="Bố cục dọc"/>
+                        </StackPanel>
+                    </Border>
+
                     <TextBlock Text="CỬA SỔ" Style="{StaticResource SectionTitle}"/>
                     <Border Style="{StaticResource SettingRow}">
                         <DockPanel>

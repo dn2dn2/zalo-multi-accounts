@@ -114,6 +114,25 @@ namespace ZaloMultiWorkspace.ViewModels
         [ObservableProperty]
         private string _trayTooltipText = "Zalo Multi-Workspace Pro";
 
+        // --- Bố cục danh sách tài khoản (tab ngang / thanh dọc) ---
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsVerticalLayout))]
+        private bool _isHorizontalLayout = true;
+
+        public bool IsVerticalLayout => !IsHorizontalLayout;
+
+        /// <summary>Áp dụng ngay và lưu bố cục tài khoản vào cài đặt</summary>
+        public void SetAccountLayout(AccountLayoutMode mode)
+        {
+            IsHorizontalLayout = mode == AccountLayoutMode.Horizontal;
+            var settings = DatabaseService.GetSettings();
+            if (settings.AccountLayout != mode)
+            {
+                settings.AccountLayout = mode;
+                DatabaseService.SaveSettings(settings);
+            }
+        }
+
         // --- Giao diện Sáng/Tối ---
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(ThemeGlyph))]
@@ -263,6 +282,7 @@ namespace ZaloMultiWorkspace.ViewModels
             LoadInitialData();
 
             ThemeMode = DatabaseService.GetSettings().ThemeMode;
+            IsHorizontalLayout = DatabaseService.GetSettings().AccountLayout == AccountLayoutMode.Horizontal;
             ThemeService.EffectiveThemeChanged += _ => OnPropertyChanged(nameof(ThemeTooltipHint));
 
             // Giai đoạn 3 & 5: Bộ đếm định kỳ mỗi 5 giây đo RAM, kiểm tra Ngủ đông tự động & Khóa tự động
@@ -279,6 +299,9 @@ namespace ZaloMultiWorkspace.ViewModels
             Accounts.Clear();
             foreach (var acc in DatabaseService.GetAccounts())
             {
+                // Trạng thái lúc chạy luôn bắt đầu sạch (DB cũ có thể còn lưu nhầm các giá trị này)
+                acc.IsSelected = false;
+                acc.UnreadCount = 0;
                 acc.IsHibernated = true;
                 acc.ConnectionStatus = AccountConnectionStatus.Hibernated;
                 acc.StatusMessage = string.Empty;
