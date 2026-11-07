@@ -22,6 +22,9 @@ namespace ZaloMultiWorkspace.Views
             ViewModel = new MainViewModel();
             DataContext = ViewModel;
 
+            // Áp giao diện đã lưu (mặc định Theo Windows) trước khi cửa sổ hiển thị
+            Services.ThemeService.Initialize(ViewModel.ThemeMode);
+
             // Gắn Grid chứa các thực thể WebView2
             ViewModel.SessionManager.AttachHostGrid(WebViewHostGrid);
 

@@ -1,0 +1,53 @@
+<!-- Bộ màu giao diện TỐI. Mỗi khóa là một vai trò màu; dùng bằng {DynamicResource Brush.*} -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Nền cửa sổ, thanh tài khoản, thanh trạng thái -->
+    <SolidColorBrush x:Key="Brush.Bg.App" Color="#141417"/>
+    <!-- Nền vùng Zalo Web -->
+    <SolidColorBrush x:Key="Brush.Bg.Main" Color="#18181B"/>
+    <!-- Thanh tiêu đề, khung Trợ lý, hộp thoại -->
+    <SolidColorBrush x:Key="Brush.Bg.Panel" Color="#1C1C21"/>
+    <!-- Nút, ô nhập, thẻ -->
+    <SolidColorBrush x:Key="Brush.Bg.Control" Color="#26262E"/>
+    <!-- Viền nút/ô nhập, nền khi rê chuột -->
+    <SolidColorBrush x:Key="Brush.Border.Control" Color="#32323D"/>
+    <!-- Đường phân cách -->
+    <SolidColorBrush x:Key="Brush.Border.Subtle" Color="#2E2E38"/>
+    <!-- Chữ chính -->
+    <SolidColorBrush x:Key="Brush.Text.Primary" Color="#F4F4F6"/>
+    <!-- Chữ nội dung thẻ -->
+    <SolidColorBrush x:Key="Brush.Text.Body" Color="#E4E4E7"/>
+    <!-- Chữ phụ -->
+    <SolidColorBrush x:Key="Brush.Text.Secondary" Color="#9CA3AF"/>
+    <!-- Icon, chữ phụ -->
+    <SolidColorBrush x:Key="Brush.Text.Tertiary" Color="#A1A1AA"/>
+    <!-- Chú thích, thời gian -->
+    <SolidColorBrush x:Key="Brush.Text.Muted" Color="#71717A"/>
+    <!-- Trạng thái chưa xác định -->
+    <SolidColorBrush x:Key="Brush.Text.Disabled" Color="#52525B"/>
+    <!-- Chữ nhấn xanh -->
+    <SolidColorBrush x:Key="Brush.Accent.Text" Color="#60A5FA"/>
+    <!-- Tên KH, nhãn tag -->
+    <SolidColorBrush x:Key="Brush.Accent.TextSoft" Color="#93C5FD"/>
+    <!-- Nền nhãn tag -->
+    <SolidColorBrush x:Key="Brush.Accent.SoftBg" Color="#1E3A8A"/>
+    <!-- Chữ cảnh báo -->
+    <SolidColorBrush x:Key="Brush.Warning.Text" Color="#FBBF24"/>
+    <!-- Chữ lỗi -->
+    <SolidColorBrush x:Key="Brush.Danger.Text" Color="#F87171"/>
+    <!-- Chữ Ping tốt -->
+    <SolidColorBrush x:Key="Brush.Success.Text" Color="#4ADE80"/>
+    <!-- Chữ xanh lá nhạt -->
+    <SolidColorBrush x:Key="Brush.Success.TextSoft" Color="#6EE7B7"/>
+    <!-- Nền chip phím tắt -->
+    <SolidColorBrush x:Key="Brush.Success.SoftBg" Color="#065F46"/>
+    <!-- Nền tooltip -->
+    <SolidColorBrush x:Key="Brush.Tooltip.Bg" Color="#0B0B0D"/>
+    <!-- Viền tooltip -->
+    <SolidColorBrush x:Key="Brush.Tooltip.Border" Color="#3F3F46"/>
+    <!-- Lớp phủ màn hình khóa -->
+    <SolidColorBrush x:Key="Brush.Overlay.Lock" Color="#F2141417"/>
+    <!-- Lớp phủ khi rê chuột / bấm nút (giữ nguyên màu nền gốc của nút) -->
+    <SolidColorBrush x:Key="Brush.Hover.Overlay" Color="#14FFFFFF"/>
+    <SolidColorBrush x:Key="Brush.Pressed.Overlay" Color="#24FFFFFF"/>
+</ResourceDictionary>

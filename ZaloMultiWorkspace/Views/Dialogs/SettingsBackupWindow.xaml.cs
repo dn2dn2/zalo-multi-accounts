@@ -16,6 +16,7 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             InitializeComponent();
             _mainViewModel = mainViewModel;
             _settings = _mainViewModel.DatabaseService.GetSettings();
+            DataContext = _mainViewModel; // cho nhóm nút chọn giao diện
 
             DefaultPinWarningText.Visibility = _settings.IsUsingDefaultPin ? Visibility.Visible : Visibility.Collapsed;
             IdleMinutesTextBox.Text = _settings.AutoLockIdleMinutes.ToString();
@@ -109,6 +110,15 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             _mainViewModel.RefreshStatusMetrics();
             DialogResult = true;
             Close();
+        }
+
+        /// <summary>Đổi giao diện áp dụng và lưu ngay, không cần bấm Lưu cài đặt</summary>
+        private void ThemeSegment_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && Enum.TryParse(fe.Tag?.ToString(), out Services.AppThemeMode mode))
+            {
+                _mainViewModel.SetThemeMode(mode);
+            }
         }
 
         private void Cancel_Click(object sender, RoutedEventArgs e)

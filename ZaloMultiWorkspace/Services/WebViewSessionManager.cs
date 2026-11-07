@@ -36,6 +36,38 @@ namespace ZaloMultiWorkspace.Services
         {
             _proxyHealthService = proxyHealthService;
             _jsBridgeService = jsBridgeService;
+            ThemeService.EffectiveThemeChanged += ApplyThemeToAllWebViews;
+        }
+
+        private static System.Drawing.Color WebViewBackground(bool dark) =>
+            dark ? System.Drawing.Color.FromArgb(255, 24, 24, 27) : System.Drawing.Color.FromArgb(255, 255, 255, 255);
+
+        /// <summary>
+        /// Đồng bộ nền WebView2 và gợi ý prefers-color-scheme cho Zalo Web theo giao diện ứng dụng.
+        /// (Zalo Web có thể dùng cài đặt giao diện riêng và bỏ qua gợi ý này.)
+        /// </summary>
+        private static void ApplyThemeToWebView(WebView2 webView, bool dark)
+        {
+            try
+            {
+                webView.DefaultBackgroundColor = WebViewBackground(dark);
+                if (webView.CoreWebView2 != null)
+                {
+                    webView.CoreWebView2.Profile.PreferredColorScheme = dark
+                        ? CoreWebView2PreferredColorScheme.Dark
+                        : CoreWebView2PreferredColorScheme.Light;
+                }
+            }
+            catch
+            {
+                // WebView2 đang đóng - bỏ qua
+            }
+        }
+
+        private void ApplyThemeToAllWebViews(bool dark)
+        {
+            foreach (var wv in _activeWebViews.Values)
+                ApplyThemeToWebView(wv, dark);
         }
 
         public void AttachHostGrid(Grid hostGrid)
@@ -222,13 +254,14 @@ namespace ZaloMultiWorkspace.Services
                 {
                     Tag = profile.Id,
                     Visibility = makeVisible ? Visibility.Visible : Visibility.Collapsed,
-                    DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 24, 24, 27)
+                    DefaultBackgroundColor = WebViewBackground(ThemeService.IsDark)
                 };
 
                 _hostGrid.Children.Add(webView);
                 _activeWebViews[profile.Id] = webView;
 
                 await webView.EnsureCoreWebView2Async(env);
+                ApplyThemeToWebView(webView, ThemeService.IsDark);
 
                 // Giai đoạn 1: Tắt các tính năng trình duyệt dư thừa
                 webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;

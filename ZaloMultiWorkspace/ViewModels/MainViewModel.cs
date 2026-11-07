@@ -91,6 +91,68 @@ namespace ZaloMultiWorkspace.ViewModels
         [ObservableProperty]
         private bool _isAutoLockOn = false;
 
+        // --- Giao diện Sáng/Tối ---
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ThemeGlyph))]
+        [NotifyPropertyChangedFor(nameof(ThemeTooltipTitle))]
+        [NotifyPropertyChangedFor(nameof(ThemeTooltipHint))]
+        [NotifyPropertyChangedFor(nameof(IsThemeSystem))]
+        [NotifyPropertyChangedFor(nameof(IsThemeLight))]
+        [NotifyPropertyChangedFor(nameof(IsThemeDark))]
+        private AppThemeMode _themeMode = AppThemeMode.System;
+
+        public bool IsThemeSystem => ThemeMode == AppThemeMode.System;
+        public bool IsThemeLight => ThemeMode == AppThemeMode.Light;
+        public bool IsThemeDark => ThemeMode == AppThemeMode.Dark;
+
+        private static string ThemeName(AppThemeMode m) => m switch
+        {
+            AppThemeMode.Light => "Sáng",
+            AppThemeMode.Dark => "Tối",
+            _ => "Theo Windows"
+        };
+
+        private static AppThemeMode NextTheme(AppThemeMode m) => m switch
+        {
+            AppThemeMode.System => AppThemeMode.Light,
+            AppThemeMode.Light => AppThemeMode.Dark,
+            _ => AppThemeMode.System
+        };
+
+        /// <summary>Glyph Segoe: màn hình (Theo Windows), mặt trời (Sáng), mặt trăng (Tối)</summary>
+        public string ThemeGlyph => ThemeMode switch
+        {
+            AppThemeMode.Light => "\uE706",
+            AppThemeMode.Dark => "\uE708",
+            _ => "\uE7F4"
+        };
+
+        public string ThemeTooltipTitle => $"Giao diện: {ThemeName(ThemeMode)}";
+
+        public string ThemeTooltipHint =>
+            (ThemeMode == AppThemeMode.System ? (ThemeService.IsDark ? "Windows đang tối · " : "Windows đang sáng · ") : string.Empty)
+            + $"nhấn để chuyển sang {ThemeName(NextTheme(ThemeMode))}";
+
+        [RelayCommand]
+        private void CycleTheme()
+        {
+            SetThemeMode(NextTheme(ThemeMode));
+        }
+
+        /// <summary>Áp dụng ngay và lưu chế độ giao diện vào cài đặt</summary>
+        public void SetThemeMode(AppThemeMode mode)
+        {
+            ThemeMode = mode;
+            ThemeService.SetMode(mode);
+            var settings = DatabaseService.GetSettings();
+            if (settings.ThemeMode != mode)
+            {
+                settings.ThemeMode = mode;
+                DatabaseService.SaveSettings(settings);
+            }
+            OnPropertyChanged(nameof(ThemeTooltipHint));
+        }
+
         // Đo lại Ping định kỳ cho tài khoản đang chọn
         private static readonly TimeSpan PingRefreshInterval = TimeSpan.FromSeconds(60);
         private DateTime _lastPingRefresh = DateTime.MinValue;
@@ -176,6 +238,9 @@ namespace ZaloMultiWorkspace.ViewModels
             };
 
             LoadInitialData();
+
+            ThemeMode = DatabaseService.GetSettings().ThemeMode;
+            ThemeService.EffectiveThemeChanged += _ => OnPropertyChanged(nameof(ThemeTooltipHint));
 
             // Giai đoạn 3 & 5: Bộ đếm định kỳ mỗi 5 giây đo RAM, kiểm tra Ngủ đông tự động & Khóa tự động
             _monitorTimer = new DispatcherTimer

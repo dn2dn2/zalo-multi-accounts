@@ -1,9 +1,16 @@
-<Application x:Class="ZaloMultiWorkspace.App"
+﻿<Application x:Class="ZaloMultiWorkspace.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Startup="Application_Startup"
              ShutdownMode="OnMainWindowClose">
     <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Bộ màu hiện hành; ThemeService thay thế từ điển này khi đổi Sáng/Tối -->
+                <ResourceDictionary Source="Themes/Dark.xaml"/>
+                <!-- Style điều khiển dùng chung (nút, ô nhập, danh sách thả xuống) cho mọi cửa sổ -->
+                <ResourceDictionary Source="Themes/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>
-

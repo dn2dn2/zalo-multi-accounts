@@ -45,6 +45,9 @@ namespace ZaloMultiWorkspace.Models
         public bool IsAutoLockEnabled { get; set; } = true;
         public int AutoLockIdleMinutes { get; set; } = 15;
         public bool MinimizeToTrayOnClose { get; set; } = true;
+
+        /// <summary>Chế độ giao diện: System (theo Windows, mặc định) / Light / Dark</summary>
+        public Services.AppThemeMode ThemeMode { get; set; } = Services.AppThemeMode.System;
     }
 }
 
