@@ -67,37 +67,12 @@ namespace ZaloMultiWorkspace.Views
             _taskbarBadgeCount = count;
 
             TaskbarItemInfo ??= new System.Windows.Shell.TaskbarItemInfo();
-            TaskbarItemInfo.Overlay = count > 0 ? CreateBadgeImage(count) : null;
+            TaskbarItemInfo.Overlay = count > 0 ? Services.TrayBadgeService.CreateCountBadge(count) : null;
             TaskbarItemInfo.Description = count > 0
                 ? $"Chat Workspace Pro — {count} tin chưa đọc"
                 : "Chat Workspace Pro";
         }
 
-        private static System.Windows.Media.ImageSource CreateBadgeImage(int count)
-        {
-            const double size = 32; // vẽ 32px, Windows tự thu về kích thước overlay (16px ở 100%)
-            string text = count > 99 ? "99+" : count.ToString();
-            var visual = new System.Windows.Media.DrawingVisual();
-            using (var dc = visual.RenderOpen())
-            {
-                var red = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(229, 41, 62));
-                dc.DrawEllipse(red, new System.Windows.Media.Pen(System.Windows.Media.Brushes.White, 2),
-                    new Point(size / 2, size / 2), size / 2 - 1, size / 2 - 1);
-
-                double fontSize = text.Length switch { 1 => 22, 2 => 17, _ => 12 };
-                var ft = new System.Windows.Media.FormattedText(text,
-                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                    new System.Windows.Media.Typeface(new System.Windows.Media.FontFamily("Segoe UI"),
-                        FontStyles.Normal, FontWeights.Bold, FontStretches.Normal),
-                    fontSize, System.Windows.Media.Brushes.White, 1.0);
-                dc.DrawText(ft, new Point((size - ft.Width) / 2, (size - ft.Height) / 2));
-            }
-            var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap((int)size, (int)size, 96, 96,
-                System.Windows.Media.PixelFormats.Pbgra32);
-            bmp.Render(visual);
-            bmp.Freeze();
-            return bmp;
-        }
 
         private void UpdateTrayIcon()
         {

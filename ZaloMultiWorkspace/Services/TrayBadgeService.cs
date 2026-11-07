@@ -126,6 +126,59 @@ namespace ZaloMultiWorkspace.Services
             return (Icon)temp.Clone();
         }
 
+        /// <summary>
+        /// Badge số tin chưa đọc cho nút taskbar (overlay icon), vẽ ĐÚNG số điểm ảnh Windows dùng
+        /// (icon nhỏ: 16px ở 100%, 20px ở 125%, 24px ở 150%...) để không bị thu phóng gây mờ.
+        /// Chữ số vẽ bằng GDI+ không khử răng cưa, căn theo lưới điểm ảnh nên sắc ở cỡ nhỏ.
+        /// </summary>
+        public static System.Windows.Media.Imaging.BitmapSource CreateCountBadge(int count)
+        {
+            int size = IconSize;
+            string text = count > 99 ? "99+" : count.ToString();
+
+            using var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.Clear(Color.Transparent);
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+                // Hình tròn đỏ phủ hết ô (không viền trắng để chữ số được to nhất có thể)
+                using (var red = new SolidBrush(DotColor))
+                    g.FillEllipse(red, 0, 0, size, size);
+
+                // Chữ số: Tahoma Bold vẽ không khử răng cưa, căn theo lưới điểm ảnh
+                // -> nét trắng tuyệt đối, sắc nhất ở cỡ 16-24px (đã so sánh với Segoe UI/Arial có khử răng cưa)
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
+                float fontPx = text.Length switch
+                {
+                    1 => size * 0.78f,
+                    2 => size * 0.62f,
+                    _ => size * 0.45f
+                };
+                using var font = new Font("Tahoma", fontPx, System.Drawing.FontStyle.Bold, GraphicsUnit.Pixel);
+                using var format = new StringFormat(StringFormat.GenericTypographic)
+                {
+                    Alignment = StringAlignment.Center,
+                    LineAlignment = StringAlignment.Center
+                };
+                var rect = new RectangleF(0, size * 0.02f, size, size);
+                using var textBrush = new SolidBrush(Color.White);
+                g.DrawString(text, font, textBrush, rect, format);
+            }
+
+            using var ms = new MemoryStream();
+            bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            ms.Position = 0;
+            var image = new System.Windows.Media.Imaging.BitmapImage();
+            image.BeginInit();
+            image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            image.StreamSource = ms;
+            image.EndInit();
+            image.Freeze();
+            return image;
+        }
+
         public void Dispose()
         {
             _normalIcon?.Dispose();
