@@ -97,7 +97,17 @@ namespace ZaloMultiWorkspace.Services
         window.Notification = CustomNotification;
     }} catch (e) {{}}
 
-    // 2. Tính tổng số tin nhắn chưa đọc từ cả <title> và DOM badge của Zalo Web
+    // 2. Tính tổng số tin nhắn chưa đọc từ cả <title> và DOM badge hiển thị thực tế của Zalo Web
+    function isBadgeVisible(el) {{
+        if (!el || !el.isConnected) return false;
+        const style = window.getComputedStyle(el);
+        if (!style || style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) {{
+            return false;
+        }}
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+    }}
+
     function computeUnreadCount() {{
         let countFromTitle = 0;
         if (document.title) {{
@@ -109,30 +119,29 @@ namespace ZaloMultiWorkspace.Services
 
         let countFromDom = 0;
         try {{
-            // Kiểm tra badge tổng trên thanh điều hướng bên trái (#main-tab)
+            // Kiểm tra badge trên biểu tượng Tin nhắn ở thanh điều hướng bên trái (#main-tab)
             const navBadges = document.querySelectorAll(UNREAD_BADGE_SEL);
             for (const b of navBadges) {{
+                if (!isBadgeVisible(b)) continue;
                 const rect = b.getBoundingClientRect();
                 const txt = (b.innerText || b.textContent || '').replace('+', '').trim();
                 const num = parseInt(txt, 10);
                 if (!isNaN(num) && num > 0) {{
-                    if (rect.left >= 0 && rect.left < 90) {{
+                    if (rect.left >= 0 && rect.left < 90 && rect.top >= 40 && rect.top < 170) {{
                         countFromDom = Math.max(countFromDom, num);
                     }}
                 }}
             }}
 
-            // Nếu không tìm thấy số trên thanh trái, cộng các badge số trong danh sách hội thoại
+            // Nếu không tìm thấy số trên thanh trái, cộng các badge số hoặc chấm đỏ đang hiển thị trong danh sách hội thoại
             if (countFromDom === 0) {{
                 let sumConv = 0;
-                const allBadges = document.querySelectorAll('.conv-item [class*=""unread""], .conv-item .z-noti-badge, .msg-item [class*=""badge""], [class*=""conv-dbname""]');
-                for (const b of navBadges) {{
-                    const rect = b.getBoundingClientRect();
-                    if (rect.left >= 70 && rect.width > 0) {{
-                        const txt = (b.innerText || b.textContent || '').replace('+', '').trim();
-                        const num = parseInt(txt, 10);
-                        if (!isNaN(num) && num > 0) sumConv += num;
-                    }}
+                const convBadges = document.querySelectorAll('.conv-item .z-noti-badge, .conv-item [class*=""noti-badge""], .conv-item .fa-num5');
+                for (const b of convBadges) {{
+                    if (!isBadgeVisible(b)) continue;
+                    const txt = (b.innerText || b.textContent || '').replace('+', '').trim();
+                    const num = parseInt(txt, 10);
+                    sumConv += (!isNaN(num) && num > 0) ? num : 1;
                 }}
                 if (sumConv > 0) countFromDom = sumConv;
             }}
@@ -145,8 +154,8 @@ namespace ZaloMultiWorkspace.Services
         try {{
             const convItems = document.querySelectorAll('.conv-item, [id*=""friend-item""], .msg-item');
             for (const item of convItems) {{
-                const hasBadge = item.querySelector('[class*=""badge""], [class*=""unread""], .fa-num5');
-                if (hasBadge) {{
+                const badge = item.querySelector('.z-noti-badge, [class*=""noti-badge""], .fa-num5');
+                if (badge && isBadgeVisible(badge)) {{
                     const nameEl = item.querySelector('.conv-item-title__name, .truncate, [class*=""title""]');
                     const msgEl = item.querySelector('.conv-item-body__main, .conv-message, [class*=""message""]');
                     const sender = nameEl ? (nameEl.innerText || '').trim() : '';
@@ -160,9 +169,9 @@ namespace ZaloMultiWorkspace.Services
         return null;
     }}
 
-    function checkAndSendUnread() {{
+    function checkAndSendUnread(forceSync = false) {{
         const currentUnread = computeUnreadCount();
-        if (currentUnread !== lastUnreadSent) {{
+        if (forceSync || currentUnread !== lastUnreadSent) {{
             const increased = (lastUnreadSent >= 0 && currentUnread > lastUnreadSent);
             lastUnreadSent = currentUnread;
             if (window.chrome && window.chrome.webview) {{
@@ -187,6 +196,7 @@ namespace ZaloMultiWorkspace.Services
     }}
 
     let lastAvatarSent = '';
+    let lastActiveChatSent = '';
 
     function findMyAvatarUrl() {{
         const imgs = document.querySelectorAll(AVATAR_SEL);
@@ -243,8 +253,11 @@ namespace ZaloMultiWorkspace.Services
                 }}
             }}
             const chatEl = document.querySelector(ACTIVE_CHAT_SEL);
-            if (chatEl && chatEl.innerText) {{
-                window.chrome.webview.postMessage({{ type: 'ACTIVE_CHAT', activeChatName: chatEl.innerText.trim() }});
+            const chatName = (chatEl && chatEl.innerText) ? chatEl.innerText.trim() : '';
+            // Chỉ gửi khi người dùng chuyển sang cuộc hội thoại khác
+            if (chatName && chatName !== lastActiveChatSent) {{
+                lastActiveChatSent = chatName;
+                window.chrome.webview.postMessage({{ type: 'ACTIVE_CHAT', activeChatName: chatName }});
             }}
         }} catch (e) {{}}
     }}
@@ -259,6 +272,14 @@ namespace ZaloMultiWorkspace.Services
         }}
     }};
     window.addEventListener('mousemove', notifyActivity, {{ passive: true }});
+    window.addEventListener('click', () => {{
+        notifyActivity();
+        setTimeout(() => checkAndSendUnread(true), 250);
+        setTimeout(() => checkAndSendUnread(true), 800);
+    }}, true);
+    window.addEventListener('focus', () => {{
+        setTimeout(() => checkAndSendUnread(true), 300);
+    }}, true);
     window.addEventListener('keydown', (e) => {{
         notifyActivity();
         // Bắt phím Space hoặc Tab sau khi gõ cú pháp tắt /shortcut trong ô chat
@@ -278,8 +299,10 @@ namespace ZaloMultiWorkspace.Services
     }} else {{
         attachTitleObserver();
     }}
+    window.checkZaloUnreadNow = () => checkAndSendUnread(true);
+
     setInterval(() => {{
-        checkAndSendUnread();
+        checkAndSendUnread(false);
         pollProfileAndChatInfo();
     }}, 1500);
 }})();";

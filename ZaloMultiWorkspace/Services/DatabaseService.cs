@@ -22,6 +22,53 @@ namespace ZaloMultiWorkspace.Services
             Directory.CreateDirectory(BaseAppDir);
             Directory.CreateDirectory(BaseProfileDir);
             EnsureSeedData();
+            RunMigrations();
+        }
+
+        private AppSettings? _cachedSettings;
+
+        /// <summary>
+        /// Chuyển dữ liệu cũ sang định dạng an toàn: mã hóa mật khẩu Proxy (DPAPI) và băm mã PIN.
+        /// Gọi lại sau khi khôi phục backup.
+        /// </summary>
+        public void RunMigrations()
+        {
+            _cachedSettings = null;
+            using var db = OpenDb();
+
+            var rawAccounts = db.GetCollection("accounts");
+            foreach (var doc in rawAccounts.FindAll().ToList())
+            {
+                if (doc.TryGetValue("ProxyPass", out var legacy))
+                {
+                    string plain = legacy.IsString ? legacy.AsString : string.Empty;
+                    if (!string.IsNullOrEmpty(plain) &&
+                        (!doc.TryGetValue("ProxyPassProtected", out var prot) || string.IsNullOrEmpty(prot.AsString)))
+                    {
+                        doc["ProxyPassProtected"] = SecurityHelper.Protect(plain);
+                    }
+                    doc.Remove("ProxyPass");
+                    rawAccounts.Update(doc);
+                }
+            }
+
+            var settingsCol = db.GetCollection<AppSettings>("settings");
+            var settings = settingsCol.FindById(1) ?? new AppSettings();
+            if (string.IsNullOrEmpty(settings.MasterPinHash))
+            {
+                string pin = string.IsNullOrWhiteSpace(settings.MasterPin) ? AppSettings.DefaultPin : settings.MasterPin.Trim();
+                var (hash, salt) = SecurityHelper.HashPin(pin);
+                settings.MasterPinHash = hash;
+                settings.MasterPinSalt = salt;
+                settings.IsUsingDefaultPin = pin == AppSettings.DefaultPin;
+                settings.MasterPin = string.Empty;
+                settingsCol.Upsert(settings);
+            }
+            else if (!string.IsNullOrEmpty(settings.MasterPin))
+            {
+                settings.MasterPin = string.Empty;
+                settingsCol.Upsert(settings);
+            }
         }
 
         private LiteDatabase OpenDb()
@@ -178,17 +225,41 @@ namespace ZaloMultiWorkspace.Services
         }
 
         // --- App Settings ---
+        /// <summary>
+        /// Trả về cài đặt từ bộ nhớ đệm (không mở DB mỗi lần gọi). Không sửa trực tiếp đối tượng trả về;
+        /// hãy dùng SaveSettings.
+        /// </summary>
         public AppSettings GetSettings()
         {
+            if (_cachedSettings != null)
+                return _cachedSettings;
+
             using var db = OpenDb();
-            return db.GetCollection<AppSettings>("settings").FindById(1) ?? new AppSettings();
+            _cachedSettings = db.GetCollection<AppSettings>("settings").FindById(1) ?? new AppSettings();
+            return _cachedSettings;
         }
 
         public void SaveSettings(AppSettings settings)
         {
             settings.Id = 1;
+            settings.MasterPin = string.Empty;
             using var db = OpenDb();
             db.GetCollection<AppSettings>("settings").Upsert(settings);
+            _cachedSettings = settings;
+        }
+
+        public bool VerifyMasterPin(string pin)
+        {
+            var settings = GetSettings();
+            return SecurityHelper.VerifyPin(pin?.Trim() ?? string.Empty, settings.MasterPinHash, settings.MasterPinSalt);
+        }
+
+        public void SetMasterPin(AppSettings settings, string newPin)
+        {
+            var (hash, salt) = SecurityHelper.HashPin(newPin);
+            settings.MasterPinHash = hash;
+            settings.MasterPinSalt = salt;
+            settings.IsUsingDefaultPin = newPin == AppSettings.DefaultPin;
         }
     }
 }

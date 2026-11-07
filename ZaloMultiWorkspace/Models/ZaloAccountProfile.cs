@@ -54,8 +54,35 @@ namespace ZaloMultiWorkspace.Models
         [ObservableProperty]
         private string _proxyUser = string.Empty;
 
+        // Mật khẩu Proxy chỉ giữ trong bộ nhớ; khi lưu DB dùng ProxyPassProtected (DPAPI)
         [ObservableProperty]
+        [property: BsonIgnore]
         private string _proxyPass = string.Empty;
+
+        [BsonField("ProxyPassProtected")]
+        public string ProxyPassProtected
+        {
+            get => Services.SecurityHelper.Protect(ProxyPass);
+            set => ProxyPass = Services.SecurityHelper.Unprotect(value);
+        }
+
+        /// <summary>
+        /// Chromium/WebView2 không hỗ trợ xác thực User:Pass cho SOCKS5.
+        /// </summary>
+        [BsonIgnore]
+        public bool IsUnsupportedSocks5Auth =>
+            string.Equals(ProxyType, "socks5", StringComparison.OrdinalIgnoreCase) &&
+            !string.IsNullOrWhiteSpace(ProxyUser);
+
+        /// <summary>
+        /// Chuỗi đại diện cấu hình mạng, dùng để phát hiện thay đổi Proxy cần khởi động lại phiên.
+        /// </summary>
+        [BsonIgnore]
+        public string ProxySignature => $"{ProxyType}|{ProxyHost}|{ProxyPort}|{ProxyAddress}|{ProxyUser}|{ProxyPass}";
+
+        [BsonIgnore]
+        [ObservableProperty]
+        private string _activeChatName = string.Empty;
 
         [ObservableProperty]
         private int _autoHibernateMinutes = 30;

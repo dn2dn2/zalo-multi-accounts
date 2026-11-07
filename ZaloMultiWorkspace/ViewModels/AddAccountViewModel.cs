@@ -100,6 +100,13 @@ namespace ZaloMultiWorkspace.ViewModels
 
             var tempProfile = new ZaloAccountProfile();
             ApplyToProfile(tempProfile);
+            if (tempProfile.IsUnsupportedSocks5Auth)
+            {
+                IsTestingProxy = false;
+                IsProxyTestSuccess = false;
+                ProxyTestStatus = "❌ WebView2 không hỗ trợ SOCKS5 có User/Pass. Hãy chọn http, hoặc dùng SOCKS5 xác thực theo IP và xóa User/Pass.";
+                return;
+            }
 
             var result = await _proxyHealthService.CheckProxyAsync(tempProfile);
             IsTestingProxy = false;
@@ -121,6 +128,15 @@ namespace ZaloMultiWorkspace.ViewModels
         [RelayCommand]
         private void Save()
         {
+            var check = new ZaloAccountProfile();
+            ApplyToProfile(check);
+            if (check.IsUnsupportedSocks5Auth)
+            {
+                IsProxyTestSuccess = false;
+                ProxyTestStatus = "❌ WebView2 không hỗ trợ SOCKS5 có User/Pass. Hãy chọn http, hoặc dùng SOCKS5 xác thực theo IP và xóa User/Pass.";
+                return;
+            }
+
             ApplyToProfile(Profile);
             CloseAction?.Invoke(true);
         }

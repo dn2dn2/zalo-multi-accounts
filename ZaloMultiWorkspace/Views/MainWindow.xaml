@@ -390,6 +390,8 @@
                     <DockPanel Visibility="{Binding IsCustomerNotesTabActive, Converter={StaticResource BoolToVis}}">
                         <Border DockPanel.Dock="Top" Padding="12" BorderBrush="#2E2E38" BorderThickness="0,0,0,1">
                             <StackPanel>
+                                <TextBlock Text="{Binding ActiveChatNotesSummary}" FontSize="11" Foreground="#6EE7B7" Margin="0,0,0,6"
+                                           TextWrapping="Wrap" Visibility="{Binding HasActiveChat, Converter={StaticResource BoolToVis}}"/>
                                 <TextBlock Text="Thêm ghi chú khách hàng (Mini-CRM):" FontSize="11" Foreground="#9CA3AF" Margin="0,0,0,6"/>
                                 <TextBox Text="{Binding NewNoteCustomerName, UpdateSourceTrigger=PropertyChanged}"
                                          Background="#26262E" Foreground="#F4F4F6" BorderBrush="#32323D" Padding="6,4" Margin="0,0,0,6"
@@ -407,7 +409,17 @@
                             <ItemsControl ItemsSource="{Binding CurrentAccountNotes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type models:CustomerNote}">
-                                        <Border Style="{StaticResource QuickReplyCardStyle}">
+                                        <Border>
+                                            <Border.Style>
+                                                <Style TargetType="Border" BasedOn="{StaticResource QuickReplyCardStyle}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsActiveChatMatch}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="#10B981"/>
+                                                            <Setter Property="BorderThickness" Value="1.5"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
                                             <StackPanel>
                                                 <DockPanel Margin="0,0,0,4">
                                                     <Button DockPanel.Dock="Right" Content="✕" FontSize="10" Padding="4,0"

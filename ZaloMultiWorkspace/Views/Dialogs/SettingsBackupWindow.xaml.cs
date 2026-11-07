@@ -17,7 +17,7 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             _mainViewModel = mainViewModel;
             _settings = _mainViewModel.DatabaseService.GetSettings();
 
-            PinTextBox.Text = _settings.MasterPin;
+            DefaultPinWarningText.Visibility = _settings.IsUsingDefaultPin ? Visibility.Visible : Visibility.Collapsed;
             IdleMinutesTextBox.Text = _settings.AutoLockIdleMinutes.ToString();
             AutoLockCheckBox.IsChecked = _settings.IsAutoLockEnabled;
             MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTrayOnClose;
@@ -36,15 +36,23 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             {
                 try
                 {
+                    IsEnabled = false;
                     BackupStatusText.Text = "⏳ Đang đưa các tài khoản về chế độ Ngủ đông và nén dữ liệu...";
-                    // Giai đoạn 5: Đưa toàn bộ tài khoản về trạng thái Ngủ đông (Dispose) để mở khóa file Cookie/IndexedDB
-                    _mainViewModel.SessionManager.HibernateAllSessions(_mainViewModel.Accounts);
-                    await _mainViewModel.BackupRestoreService.BackupWorkspaceAsync(dlg.FileName);
-                    BackupStatusText.Text = $"✅ Đã sao lưu toàn bộ Profile thành công tại: {dlg.FileName}";
+                    // Giai đoạn 5: Ngủ đông toàn bộ và chờ tiến trình WebView2 thoát hẳn để mở khóa file Cookie/IndexedDB
+                    await _mainViewModel.SessionManager.HibernateAllSessionsAndWaitAsync(_mainViewModel.Accounts);
+                    var result = await _mainViewModel.BackupRestoreService.BackupWorkspaceAsync(dlg.FileName);
+                    _mainViewModel.RefreshStatusMetrics();
+                    BackupStatusText.Text = result.SkippedFiles.Count == 0
+                        ? $"✅ Đã sao lưu {result.FileCount} file thành công tại: {dlg.FileName}"
+                        : $"⚠️ Đã sao lưu {result.FileCount} file tại: {dlg.FileName}. Bỏ qua {result.SkippedFiles.Count} file đang bị khóa (vd: {result.SkippedFiles[0]}).";
                 }
                 catch (Exception ex)
                 {
                     BackupStatusText.Text = $"❌ Lỗi khi sao lưu: {ex.Message}";
+                }
+                finally
+                {
+                    IsEnabled = true;
                 }
             }
         }
@@ -61,22 +69,38 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             {
                 try
                 {
+                    IsEnabled = false;
                     BackupStatusText.Text = "⏳ Đang đóng các phiên hiện tại và giải nén khôi phục...";
-                    _mainViewModel.SessionManager.HibernateAllSessions(_mainViewModel.Accounts);
+                    await _mainViewModel.SessionManager.HibernateAllSessionsAndWaitAsync(_mainViewModel.Accounts);
                     await _mainViewModel.BackupRestoreService.RestoreWorkspaceAsync(dlg.FileName);
+                    _mainViewModel.DatabaseService.RunMigrations();
                     _mainViewModel.LoadInitialData();
                     BackupStatusText.Text = "✅ Khôi phục dữ liệu hoàn tất! Danh sách tài khoản đã được cập nhật.";
                 }
                 catch (Exception ex)
                 {
-                    BackupStatusText.Text = $"❌ Lỗi khi khôi phục: {ex.Message}";
+                    BackupStatusText.Text = $"❌ Lỗi khi khôi phục (dữ liệu cũ đã được giữ nguyên): {ex.Message}";
+                }
+                finally
+                {
+                    IsEnabled = true;
                 }
             }
         }
 
         private void Save_Click(object sender, RoutedEventArgs e)
         {
-            _settings.MasterPin = string.IsNullOrWhiteSpace(PinTextBox.Text) ? "1234" : PinTextBox.Text.Trim();
+            string newPin = PinTextBox.Password?.Trim() ?? string.Empty;
+            if (newPin.Length > 0)
+            {
+                if (newPin.Length < 4)
+                {
+                    MessageBox.Show(this, "Mã PIN phải có ít nhất 4 ký tự.", "Mã PIN không hợp lệ",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                _mainViewModel.DatabaseService.SetMasterPin(_settings, newPin);
+            }
             _settings.AutoLockIdleMinutes = int.TryParse(IdleMinutesTextBox.Text.Trim(), out int m) && m > 0 ? m : 15;
             _settings.IsAutoLockEnabled = AutoLockCheckBox.IsChecked == true;
             _settings.MinimizeToTrayOnClose = MinimizeToTrayCheckBox.IsChecked == true;

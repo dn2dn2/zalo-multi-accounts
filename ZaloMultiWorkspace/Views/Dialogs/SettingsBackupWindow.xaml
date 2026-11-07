@@ -35,8 +35,10 @@
                         <ColumnDefinition Width="150"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="Mã PIN mở khóa màn hình:" FontSize="12" Foreground="#9CA3AF" Margin="0,0,0,4"/>
-                        <TextBox x:Name="PinTextBox"/>
+                        <TextBlock Text="Mã PIN mới (để trống = giữ mã hiện tại):" FontSize="12" Foreground="#9CA3AF" Margin="0,0,0,4"/>
+                        <PasswordBox x:Name="PinTextBox"/>
+                        <TextBlock x:Name="DefaultPinWarningText" Text="⚠️ Đang dùng mã PIN mặc định 1234 - hãy đổi mã PIN!"
+                                   FontSize="11" Foreground="#FBBF24" Margin="0,4,0,0" Visibility="Collapsed"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Tự khóa sau (phút rảnh):" FontSize="12" Foreground="#9CA3AF" Margin="0,0,0,4"/>
@@ -52,7 +54,7 @@
                 <Separator Background="#2E2E38" Margin="0,4,0,14"/>
 
                 <TextBlock Text="SAO LƯU &amp; DI CHUYỂN DỮ LIỆU (BACKUP / RESTORE)" FontSize="12" FontWeight="Bold" Foreground="#60A5FA" Margin="0,0,0,8"/>
-                <TextBlock Text="Hệ thống sẽ tự động chuyển toàn bộ tài khoản về chế độ Ngủ đông (Dispose) để mở khóa Cookie/IndexedDB trước khi đóng gói hoặc khôi phục file .zip."
+                <TextBlock Text="Hệ thống sẽ tự động chuyển toàn bộ tài khoản về chế độ Ngủ đông để mở khóa Cookie/IndexedDB trước khi đóng gói hoặc khôi phục (bỏ qua thư mục Cache). Lưu ý: phiên đăng nhập Zalo và mật khẩu Proxy được Windows mã hóa theo tài khoản người dùng, nên bản backup chỉ khôi phục đầy đủ trên cùng tài khoản Windows."
                            FontSize="11" Foreground="#9CA3AF" TextWrapping="Wrap" Margin="0,0,0,12"/>
 
                 <Grid Margin="0,0,0,10">

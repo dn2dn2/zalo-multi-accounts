@@ -58,6 +58,20 @@ namespace ZaloMultiWorkspace.ViewModels
         [ObservableProperty]
         private string _newNoteContent = string.Empty;
 
+        /// <summary>Tên cuộc hội thoại đang mở trên Zalo Web của tài khoản đang chọn</summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasActiveChat))]
+        private string _currentActiveChatName = string.Empty;
+
+        [ObservableProperty]
+        private string _activeChatNotesSummary = string.Empty;
+
+        public bool HasActiveChat => !string.IsNullOrWhiteSpace(CurrentActiveChatName);
+
+        // Tên đã tự điền gần nhất; chỉ ghi đè ô tên khách khi người dùng chưa tự sửa
+        private string _lastAutoFilledCustomerName = string.Empty;
+        private double _lastTotalRamMb = 0;
+
         // --- Status Bar ---
         [ObservableProperty]
         private string _totalUnreadText = "🔔 Tổng chưa đọc: 0 tin";
@@ -186,7 +200,16 @@ namespace ZaloMultiWorkspace.ViewModels
             {
                 newValue.IsSelected = true;
                 newValue.LastInteractionTime = DateTime.Now;
+                CurrentActiveChatName = newValue.ActiveChatName;
+                AutoFillCustomerName(newValue.ActiveChatName);
                 LoadCustomerNotesForAccount(newValue.Id);
+
+                // Nếu người dùng chuyển sang đúng tài khoản đang có Banner thông báo nổi thì tự đóng Banner
+                if (NotificationAccount != null && NotificationAccount.Id == newValue.Id)
+                {
+                    IsInAppNotificationVisible = false;
+                    _toastDismissTimer.Stop();
+                }
 
                 if (SessionManager.IsSessionRunning(newValue.Id))
                 {
@@ -224,10 +247,57 @@ namespace ZaloMultiWorkspace.ViewModels
 
         private void LoadCustomerNotesForAccount(Guid accountId)
         {
+            var notes = DatabaseService.GetCustomerNotes(accountId);
             CurrentAccountNotes.Clear();
-            foreach (var note in DatabaseService.GetCustomerNotes(accountId))
+            foreach (var note in notes)
             {
                 CurrentAccountNotes.Add(note);
+            }
+            ApplyActiveChatNoteMatching();
+        }
+
+        private static string NormalizeName(string? name) =>
+            (name ?? string.Empty).Trim().ToLowerInvariant();
+
+        /// <summary>
+        /// Đánh dấu và đưa lên đầu các ghi chú thuộc khách hàng đang chat trên Zalo Web.
+        /// </summary>
+        private void ApplyActiveChatNoteMatching()
+        {
+            string active = NormalizeName(CurrentActiveChatName);
+            foreach (var note in CurrentAccountNotes)
+            {
+                note.IsActiveChatMatch = active.Length > 0 && NormalizeName(note.CustomerName) == active;
+            }
+
+            var ordered = CurrentAccountNotes
+                .OrderByDescending(n => n.IsActiveChatMatch)
+                .ThenByDescending(n => n.UpdatedAt)
+                .ToList();
+            for (int i = 0; i < ordered.Count; i++)
+            {
+                int oldIndex = CurrentAccountNotes.IndexOf(ordered[i]);
+                if (oldIndex != i)
+                    CurrentAccountNotes.Move(oldIndex, i);
+            }
+
+            int matchCount = CurrentAccountNotes.Count(n => n.IsActiveChatMatch);
+            ActiveChatNotesSummary = active.Length == 0
+                ? string.Empty
+                : matchCount > 0
+                    ? $"💬 Đang chat: {CurrentActiveChatName} — {matchCount} ghi chú"
+                    : $"💬 Đang chat: {CurrentActiveChatName} — chưa có ghi chú";
+        }
+
+        private void AutoFillCustomerName(string activeChatName)
+        {
+            if (string.IsNullOrWhiteSpace(activeChatName))
+                return;
+            // Không ghi đè khi người dùng đã tự gõ tên khác
+            if (string.IsNullOrWhiteSpace(NewNoteCustomerName) || NewNoteCustomerName == _lastAutoFilledCustomerName)
+            {
+                NewNoteCustomerName = activeChatName;
+                _lastAutoFilledCustomerName = activeChatName;
             }
         }
 
@@ -402,6 +472,7 @@ namespace ZaloMultiWorkspace.ViewModels
 
             DatabaseService.UpsertCustomerNote(note);
             CurrentAccountNotes.Insert(0, note);
+            ApplyActiveChatNoteMatching();
 
             NewNoteContent = string.Empty;
             NewNotePhoneOrTag = string.Empty;
@@ -429,8 +500,7 @@ namespace ZaloMultiWorkspace.ViewModels
         [RelayCommand]
         private void UnlockWorkspace()
         {
-            var settings = DatabaseService.GetSettings();
-            if (PinInput == settings.MasterPin)
+            if (DatabaseService.VerifyMasterPin(PinInput))
             {
                 PinInput = string.Empty;
                 LockErrorMessage = string.Empty;
@@ -445,6 +515,11 @@ namespace ZaloMultiWorkspace.ViewModels
         // --- Event Handlers từ WebViewSessionManager ---
         private void HandleUnreadCountChanged(ZaloAccountProfile profile, int newCount)
         {
+            if (newCount == 0 && NotificationAccount != null && NotificationAccount.Id == profile.Id)
+            {
+                IsInAppNotificationVisible = false;
+                _toastDismissTimer.Stop();
+            }
             RefreshStatusMetrics();
         }
 
@@ -532,10 +607,29 @@ namespace ZaloMultiWorkspace.ViewModels
 
         private void HandleActiveChatChanged(ZaloAccountProfile profile, string activeChatName)
         {
-            if (profile.IsSelected && !string.IsNullOrWhiteSpace(activeChatName))
+            if (string.IsNullOrWhiteSpace(activeChatName) || profile.ActiveChatName == activeChatName)
+                return;
+
+            profile.ActiveChatName = activeChatName;
+            if (profile.IsSelected)
             {
-                NewNoteCustomerName = activeChatName;
+                CurrentActiveChatName = activeChatName;
+                AutoFillCustomerName(activeChatName);
+                ApplyActiveChatNoteMatching();
             }
+        }
+
+        /// <summary>
+        /// Khởi động lại phiên đang chạy để áp dụng cấu hình Proxy mới (tham số Proxy chỉ đặt được khi tạo WebView2).
+        /// </summary>
+        public async Task RestartSessionIfRunningAsync(ZaloAccountProfile profile)
+        {
+            if (!SessionManager.IsSessionRunning(profile.Id))
+                return;
+
+            await SessionManager.HibernateAllSessionsAndWaitAsync(new[] { profile });
+            await SessionManager.StartOrWakeSessionAsync(profile, makeVisible: profile.IsSelected);
+            RefreshStatusMetrics();
         }
 
         private void OnMonitorTimerTick(object? sender, EventArgs e)
@@ -568,7 +662,8 @@ namespace ZaloMultiWorkspace.ViewModels
                 }
             }
 
-            // 3. Cập nhật thống kê RAM và Status Bar
+            // 3. Đo RAM (tốn tài nguyên -> chỉ chạy theo chu kỳ 5 giây) và cập nhật Status Bar
+            _lastTotalRamMb = SessionManager.MeasureTotalRamUsageMb(Accounts);
             RefreshStatusMetrics();
         }
 
@@ -578,8 +673,10 @@ namespace ZaloMultiWorkspace.ViewModels
             int totalAccounts = Accounts.Count;
             int runningCount = SessionManager.RunningCount;
             int hibernatedCount = Accounts.Count(a => !SessionManager.IsSessionRunning(a.Id));
-            double totalRamMb = SessionManager.MeasureTotalRamUsageMb(Accounts);
-            var settings = DatabaseService.GetSettings();
+            if (runningCount == 0)
+                _lastTotalRamMb = 0;
+            double totalRamMb = _lastTotalRamMb;
+            var settings = DatabaseService.GetSettings(); // lấy từ bộ nhớ đệm, không mở DB
 
             TotalUnreadText = $"🔔 Tổng chưa đọc: {totalUnread} tin";
             RunningStatsText = $"🟢 Đang chạy: {runningCount}/{totalAccounts} tài khoản";

@@ -109,13 +109,19 @@ namespace ZaloMultiWorkspace.Views
             OpenEditAccountDialog(ViewModel.SelectedAccount);
         }
 
-        private void OpenEditAccountDialog(ZaloAccountProfile profile)
+        private async void OpenEditAccountDialog(ZaloAccountProfile profile)
         {
+            string proxyBefore = profile.ProxySignature;
             var vm = new AddAccountViewModel(ViewModel.ProxyHealthService, profile);
             var dlg = new AddAccountWindow(vm);
             if (ShowAirspaceSafeDialog(dlg) == true)
             {
                 ViewModel.DatabaseService.UpsertAccount(profile);
+                // Proxy chỉ áp dụng khi tạo WebView2 -> khởi động lại phiên đang chạy nếu cấu hình mạng thay đổi
+                if (profile.ProxySignature != proxyBefore)
+                {
+                    await ViewModel.RestartSessionIfRunningAsync(profile);
+                }
                 ViewModel.RefreshStatusMetrics();
             }
         }
@@ -261,7 +267,7 @@ namespace ZaloMultiWorkspace.Views
             Close();
         }
 
-        private void RestoreFromTray()
+        public void RestoreFromTray()
         {
             Show();
             if (WindowState == WindowState.Minimized)

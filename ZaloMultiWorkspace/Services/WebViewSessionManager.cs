@@ -21,6 +21,9 @@ namespace ZaloMultiWorkspace.Services
         private readonly ProxyHealthService _proxyHealthService;
         private readonly JsBridgeService _jsBridgeService;
         private Grid? _hostGrid;
+        private readonly Dictionary<Guid, DateTime> _lastNotifyAt = new();
+        private const int GenericNotifyDelayMs = 700;
+        private const double NotifyDedupSeconds = 3.0;
 
         public event Action<ZaloAccountProfile, int>? OnUnreadCountChanged;
         public event Action<ZaloAccountProfile, string, string>? OnNewMessageNotification;
@@ -46,34 +49,72 @@ namespace ZaloMultiWorkspace.Services
         }
 
         /// <summary>
-        /// Phần 5: Dọn dẹp các tiến trình msedgewebview2.exe mồ côi từ phiên trước đang giữ khóa thư mục Profiles
+        /// Phần 5: Dọn dẹp các tiến trình msedgewebview2.exe mồ côi từ phiên trước đang giữ khóa thư mục Profiles.
+        /// Chỉ đóng tiến trình trình duyệt có --user-data-dir nằm trong thư mục Profiles của ứng dụng
+        /// và có tiến trình cha đã thoát (ứng dụng chủ bị crash / bị kill).
         /// </summary>
-        public static void CleanupOrphanProcesses()
+        public static int CleanupOrphanProcesses()
         {
+            int killed = 0;
             try
             {
-                string profileBase = DatabaseService.BaseProfileDir;
-                var processes = Process.GetProcessesByName("msedgewebview2");
-                foreach (var proc in processes)
+                string profileBase = Path.GetFullPath(DatabaseService.BaseProfileDir).TrimEnd('\\');
+                using var searcher = new System.Management.ManagementObjectSearcher(
+                    "SELECT ProcessId, ParentProcessId, CommandLine FROM Win32_Process WHERE Name = 'msedgewebview2.exe'");
+                using var results = searcher.Get();
+                foreach (System.Management.ManagementObject mo in results)
                 {
-                    try
+                    using (mo)
                     {
-                        // Kiểm tra nếu tiến trình thuộc vùng dữ liệu của ứng dụng hoặc bị treo mồ côi
-                        string? mainModulePath = proc.MainModule?.FileName;
-                        if (mainModulePath != null)
+                        string? cmd = mo["CommandLine"] as string;
+                        if (string.IsNullOrEmpty(cmd) ||
+                            cmd.IndexOf(profileBase, StringComparison.OrdinalIgnoreCase) < 0)
+                            continue;
+
+                        // Chỉ đóng tiến trình trình duyệt gốc (không có --type=); tiến trình con tự thoát theo
+                        if (cmd.Contains("--type=", StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        // Chỉ đóng khi tiến trình cha (ứng dụng chủ) không còn chạy -> thực sự mồ côi.
+                        // Tránh đóng nhầm phiên của một instance khác (vd: bản cũ chưa có khóa 1 instance).
+                        int parentPid = Convert.ToInt32(mo["ParentProcessId"]);
+                        if (IsProcessAlive(parentPid))
+                            continue;
+
+                        try
                         {
-                            // Chỉ đóng các tiến trình không còn cửa sổ cha hợp lệ nếu cần
+                            int pid = Convert.ToInt32(mo["ProcessId"]);
+                            using var proc = Process.GetProcessById(pid);
+                            proc.Kill(entireProcessTree: true);
+                            proc.WaitForExit(3000);
+                            killed++;
                         }
-                    }
-                    catch
-                    {
-                        // Bỏ qua quyền truy cập hệ thống
+                        catch
+                        {
+                            // Tiến trình đã thoát hoặc không đủ quyền
+                        }
                     }
                 }
             }
             catch
             {
-                // Bỏ qua lỗi khi liệt kê tiến trình
+                // WMI không khả dụng - bỏ qua
+            }
+            return killed;
+        }
+
+        private static bool IsProcessAlive(int pid)
+        {
+            if (pid <= 0)
+                return false;
+            try
+            {
+                using var proc = Process.GetProcessById(pid);
+                return !proc.HasExited;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -104,6 +145,18 @@ namespace ZaloMultiWorkspace.Services
                     SwitchVisibleTab(profile.Id);
                 OnSessionStateChanged?.Invoke();
                 return true;
+            }
+
+            if (profile.IsUnsupportedSocks5Auth)
+            {
+                profile.ConnectionStatus = AccountConnectionStatus.ProxyError;
+                profile.IsHibernated = false;
+                profile.StatusMessage = "WebView2 không hỗ trợ Proxy SOCKS5 có User/Pass. Hãy dùng Proxy HTTP, " +
+                                        "hoặc SOCKS5 xác thực bằng IP (whitelist) và xóa User/Pass.";
+                if (makeVisible)
+                    HideAllWebViews();
+                OnSessionStateChanged?.Invoke();
+                return false;
             }
 
             profile.ConnectionStatus = AccountConnectionStatus.Connecting;
@@ -207,25 +260,26 @@ namespace ZaloMultiWorkspace.Services
                     {
                         string title = webView.CoreWebView2.DocumentTitle ?? string.Empty;
                         var match = Regex.Match(title, @"\((\d+)\)");
-                        if (match.Success && int.TryParse(match.Groups[1].Value, out int titleCount))
+                        int titleCount = (match.Success && int.TryParse(match.Groups[1].Value, out int parsed)) ? parsed : 0;
+
+                        Application.Current.Dispatcher.Invoke(() =>
                         {
-                            Application.Current.Dispatcher.Invoke(() =>
+                            int oldCount = profile.UnreadCount;
+                            // Không tự xóa badge chưa đọc khi tài khoản đang ở nền (chưa được người dùng mở xem)
+                            if (!profile.IsSelected && titleCount < oldCount)
+                                return;
+
+                            if (titleCount != oldCount)
                             {
-                                int oldCount = profile.UnreadCount;
-                                if (titleCount != oldCount)
+                                profile.UnreadCount = titleCount;
+                                OnUnreadCountChanged?.Invoke(profile, titleCount);
+                                if (titleCount > oldCount)
                                 {
-                                    profile.UnreadCount = titleCount;
-                                    OnUnreadCountChanged?.Invoke(profile, titleCount);
-                                    if (titleCount > oldCount)
-                                    {
-                                        OnNewMessageNotification?.Invoke(
-                                            profile,
-                                            profile.DisplayName,
-                                            $"Có {titleCount} tin nhắn chưa đọc trên Zalo");
-                                    }
+                                    RaiseGenericNewMessage(profile, profile.DisplayName,
+                                        $"Có {titleCount} tin nhắn chưa đọc trên Zalo");
                                 }
-                            });
-                        }
+                            }
+                        });
                     }
                     catch { }
                 };
@@ -278,6 +332,13 @@ namespace ZaloMultiWorkspace.Services
                     {
                         case "UNREAD_UPDATE":
                             int oldCount = profile.UnreadCount;
+                            // Khi tài khoản đang ở nền (người dùng đang ở tab khác), giữ nguyên badge thông báo trên icon,
+                            // không cho phép giảm về 0 cho tới khi người dùng chuyển sang tài khoản đó
+                            if (!profile.IsSelected && msg.Count < oldCount)
+                            {
+                                break;
+                            }
+
                             profile.UnreadCount = msg.Count;
                             OnUnreadCountChanged?.Invoke(profile, msg.Count);
                             if (msg.Count > oldCount)
@@ -286,7 +347,7 @@ namespace ZaloMultiWorkspace.Services
                                 string bodyText = !string.IsNullOrWhiteSpace(msg.Body)
                                     ? msg.Body
                                     : $"Có {msg.Count} tin nhắn chưa đọc";
-                                OnNewMessageNotification?.Invoke(profile, senderName, bodyText);
+                                RaiseGenericNewMessage(profile, senderName, bodyText);
                             }
                             else
                             {
@@ -295,11 +356,17 @@ namespace ZaloMultiWorkspace.Services
                             break;
 
                         case "NEW_MESSAGE_NOTIFY":
-                            if (profile.UnreadCount == 0)
+                            if (!profile.IsSelected)
+                            {
+                                profile.UnreadCount = profile.UnreadCount + 1;
+                                OnUnreadCountChanged?.Invoke(profile, profile.UnreadCount);
+                            }
+                            else if (profile.UnreadCount == 0)
                             {
                                 profile.UnreadCount = 1;
                                 OnUnreadCountChanged?.Invoke(profile, 1);
                             }
+                            _lastNotifyAt[profile.Id] = DateTime.Now;
                             OnNewMessageNotification?.Invoke(
                                 profile,
                                 !string.IsNullOrWhiteSpace(msg.Sender) ? msg.Sender : profile.DisplayName,
@@ -337,6 +404,22 @@ namespace ZaloMultiWorkspace.Services
             {
                 // Bỏ qua các bản tin không đúng định dạng
             }
+        }
+
+        /// <summary>
+        /// Thông báo "chung" (từ tiêu đề / bộ đếm) được trì hoãn ngắn và bỏ qua nếu quanh thời điểm đó
+        /// đã có thông báo chi tiết từ window.Notification của Zalo (tránh 2-3 thông báo cho cùng 1 tin).
+        /// </summary>
+        private async void RaiseGenericNewMessage(ZaloAccountProfile profile, string sender, string body)
+        {
+            DateTime requestedAt = DateTime.Now;
+            await Task.Delay(GenericNotifyDelayMs);
+            if (_lastNotifyAt.TryGetValue(profile.Id, out var last) &&
+                last >= requestedAt.AddSeconds(-NotifyDedupSeconds))
+                return;
+
+            _lastNotifyAt[profile.Id] = DateTime.Now;
+            OnNewMessageNotification?.Invoke(profile, sender, body);
         }
 
         private async Task UpdateProfileAvatarAsync(ZaloAccountProfile profile, string rawAvatarUrl)
@@ -394,9 +477,27 @@ namespace ZaloMultiWorkspace.Services
             {
                 if (child is WebView2 wv && wv.Tag is Guid id)
                 {
-                    wv.Visibility = (id == activeAccountId) ? Visibility.Visible : Visibility.Collapsed;
+                    bool isTarget = (id == activeAccountId);
+                    wv.Visibility = isTarget ? Visibility.Visible : Visibility.Collapsed;
+                    if (isTarget && wv.CoreWebView2 != null)
+                    {
+                        _ = SyncUnreadAfterTabVisibleAsync(wv);
+                    }
                 }
             }
+        }
+
+        private async Task SyncUnreadAfterTabVisibleAsync(WebView2 webView)
+        {
+            try
+            {
+                await Task.Delay(800);
+                if (webView.Visibility == Visibility.Visible && webView.CoreWebView2 != null)
+                {
+                    await webView.CoreWebView2.ExecuteScriptAsync("if (window.checkZaloUnreadNow) window.checkZaloUnreadNow();");
+                }
+            }
+            catch { }
         }
 
         public void HideAllWebViews()
@@ -439,6 +540,44 @@ namespace ZaloMultiWorkspace.Services
             OnSessionStateChanged?.Invoke();
         }
 
+        /// <summary>
+        /// Ngủ đông toàn bộ và chờ tiến trình trình duyệt WebView2 thoát hẳn (giải phóng khóa file Profile).
+        /// </summary>
+        public async Task HibernateAllSessionsAndWaitAsync(IEnumerable<ZaloAccountProfile> profiles)
+        {
+            var targets = profiles.ToList();
+            var pids = new List<int>();
+            foreach (var p in targets)
+            {
+                if (!_activeWebViews.TryGetValue(p.Id, out var wv))
+                    continue;
+                try
+                {
+                    if (wv.CoreWebView2 != null)
+                        pids.Add((int)wv.CoreWebView2.BrowserProcessId);
+                }
+                catch { }
+            }
+
+            HibernateAllSessions(targets);
+
+            await Task.Run(() =>
+            {
+                foreach (int pid in pids)
+                {
+                    try
+                    {
+                        using var proc = Process.GetProcessById(pid);
+                        proc.WaitForExit(5000);
+                    }
+                    catch
+                    {
+                        // Tiến trình đã thoát
+                    }
+                }
+            });
+        }
+
         public void HibernateAllSessions(IEnumerable<ZaloAccountProfile> profiles)
         {
             foreach (var p in profiles)
@@ -456,7 +595,9 @@ namespace ZaloMultiWorkspace.Services
         }
 
         /// <summary>
-        /// Giai đoạn 3: Đo lường RAM thực tế của các tiến trình WebView2 định kỳ mỗi 5 giây
+        /// Giai đoạn 3: Đo RAM thực tế của từng tài khoản bằng cách cộng mọi tiến trình
+        /// (browser, renderer, GPU, utility) thuộc môi trường WebView2 riêng của tài khoản đó.
+        /// Không cộng tiến trình msedgewebview2 của ứng dụng khác (Teams, Widgets...).
         /// </summary>
         public double MeasureTotalRamUsageMb(IEnumerable<ZaloAccountProfile> profiles)
         {
@@ -465,19 +606,23 @@ namespace ZaloMultiWorkspace.Services
 
             foreach (var kvp in _activeWebViews.ToList())
             {
-                var accountId = kvp.Key;
-                var webView = kvp.Value;
                 double accountMb = 0;
-
                 try
                 {
-                    if (webView.CoreWebView2 != null)
+                    var core = kvp.Value.CoreWebView2;
+                    if (core != null)
                     {
-                        uint pid = webView.CoreWebView2.BrowserProcessId;
-                        if (pid > 0)
+                        var seen = new HashSet<int>();
+                        foreach (var info in core.Environment.GetProcessInfos())
                         {
-                            using var proc = Process.GetProcessById((int)pid);
-                            accountMb = Math.Round(proc.WorkingSet64 / (1024.0 * 1024.0), 1);
+                            if (!seen.Add(info.ProcessId))
+                                continue;
+                            try
+                            {
+                                using var proc = Process.GetProcessById(info.ProcessId);
+                                accountMb += proc.WorkingSet64 / (1024.0 * 1024.0);
+                            }
+                            catch { }
                         }
                     }
                 }
@@ -486,36 +631,12 @@ namespace ZaloMultiWorkspace.Services
                     accountMb = 0;
                 }
 
-                if (profileMap.TryGetValue(accountId, out var profile))
+                accountMb = Math.Round(accountMb, 1);
+                if (profileMap.TryGetValue(kvp.Key, out var profile))
                 {
                     profile.RamUsageMb = accountMb;
                 }
                 totalMb += accountMb;
-            }
-
-            // Cộng thêm các tiến trình con msedgewebview2 nếu có
-            try
-            {
-                if (_activeWebViews.Count > 0)
-                {
-                    var allEdgeProcs = Process.GetProcessesByName("msedgewebview2");
-                    double allEdgeMb = 0;
-                    foreach (var p in allEdgeProcs)
-                    {
-                        try
-                        {
-                            allEdgeMb += p.WorkingSet64 / (1024.0 * 1024.0);
-                        }
-                        catch { }
-                        finally { p.Dispose(); }
-                    }
-                    if (allEdgeMb > totalMb)
-                        totalMb = Math.Round(allEdgeMb, 0);
-                }
-            }
-            catch
-            {
-                // Giữ tổng tính theo BrowserProcessId
             }
 
             return Math.Round(totalMb, 0);
