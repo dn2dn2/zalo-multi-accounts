@@ -91,6 +91,16 @@ namespace ZaloMultiWorkspace.Models
         [ObservableProperty]
         private int _autoHibernateMinutes = 30;
 
+        /// <summary>Tắt popup, âm thanh và thanh thông báo của riêng tài khoản này (vẫn đếm tin chưa đọc)</summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(MuteMenuHeader))]
+        private bool _isNotificationMuted = false;
+
+        [BsonIgnore]
+        public string MuteMenuHeader => IsNotificationMuted
+            ? "🔔 Bật lại thông báo tài khoản này"
+            : "🔕 Tắt thông báo tài khoản này";
+
         public int SortOrder { get; set; } = 0;
 
         // --- Thuộc tính Runtime (Không lưu cứng trạng thái phiên tạm thời vào DB) ---

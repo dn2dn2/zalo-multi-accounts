@@ -24,6 +24,11 @@ namespace ZaloMultiWorkspace.Models
 
         [BsonIgnore]
         public bool HasImage => !string.IsNullOrWhiteSpace(ImagePath);
+
+        /// <summary>Viền xanh lá ngắn sau khi sửa/thêm để người dùng thấy tin vừa cập nhật</summary>
+        [ObservableProperty]
+        [property: BsonIgnore]
+        private bool _isJustUpdated;
     }
 }
 

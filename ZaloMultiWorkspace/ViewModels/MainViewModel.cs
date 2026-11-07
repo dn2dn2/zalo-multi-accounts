@@ -91,6 +91,16 @@ namespace ZaloMultiWorkspace.ViewModels
         [ObservableProperty]
         private bool _isAutoLockOn = false;
 
+        // --- Icon khay hệ thống: chấm đỏ + tooltip tin chưa đọc theo tài khoản ---
+        [ObservableProperty]
+        private bool _trayHasUnread = false;
+
+        [ObservableProperty]
+        private int _totalUnreadCount = 0;
+
+        [ObservableProperty]
+        private string _trayTooltipText = "Zalo Multi-Workspace Pro";
+
         // --- Giao diện Sáng/Tối ---
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(ThemeGlyph))]
@@ -633,23 +643,51 @@ namespace ZaloMultiWorkspace.ViewModels
             _lastToastAccountId = profile.Id;
             _lastToastTime = now;
 
-            NotificationAccount = profile;
-            NotificationHeader = $"🔔 [{profile.DisplayName}] {senderName}";
-            NotificationBody = bodyText;
-            IsInAppNotificationVisible = true;
+            // Tài khoản đã tắt thông báo: chỉ đếm tin chưa đọc (chấm đỏ/badge), không báo gì thêm
+            if (profile.IsNotificationMuted)
+                return;
 
-            _toastDismissTimer.Stop();
-            _toastDismissTimer.Start();
+            var settings = DatabaseService.GetSettings();
+            bool doNotDisturb = settings.IsInDoNotDisturb(now);
 
-            try
+            if (settings.ShowInAppBanner)
             {
-                System.Media.SystemSounds.Asterisk.Play();
-            }
-            catch { }
+                NotificationAccount = profile;
+                NotificationHeader = $"🔔 [{profile.DisplayName}] {senderName}";
+                NotificationBody = bodyText;
+                IsInAppNotificationVisible = true;
 
-            OnTrayBalloonNotificationRequested?.Invoke(
-                $"Zalo [{profile.DisplayName}] - {senderName}",
-                bodyText);
+                _toastDismissTimer.Stop();
+                _toastDismissTimer.Start();
+            }
+
+            if (doNotDisturb)
+                return;
+
+            if (settings.PlaySound)
+            {
+                try
+                {
+                    System.Media.SystemSounds.Asterisk.Play();
+                }
+                catch { }
+            }
+
+            if (settings.ShowToastPopup)
+            {
+                if (settings.HideMessageContent)
+                {
+                    OnTrayBalloonNotificationRequested?.Invoke(
+                        $"Zalo [{profile.DisplayName}]",
+                        "Bạn có tin nhắn mới");
+                }
+                else
+                {
+                    OnTrayBalloonNotificationRequested?.Invoke(
+                        $"Zalo [{profile.DisplayName}] - {senderName}",
+                        bodyText);
+                }
+            }
         }
 
         [RelayCommand]
@@ -787,6 +825,54 @@ namespace ZaloMultiWorkspace.ViewModels
             }
         }
 
+        /// <summary>
+        /// Tooltip icon khay: tổng tin chưa đọc và chia theo tài khoản.
+        /// Windows giới hạn tooltip khay ~127 ký tự nên rút gọn nếu quá dài.
+        /// </summary>
+        private string BuildTrayTooltip(int totalUnread)
+        {
+            const string appName = "Zalo Multi-Workspace Pro";
+            const int maxLength = 127;
+            if (totalUnread <= 0)
+                return $"{appName}\nKhông có tin chưa đọc";
+
+            string header = $"{appName}\n{totalUnread} tin chưa đọc";
+            var parts = Accounts
+                .Where(a => a.UnreadCount > 0)
+                .OrderByDescending(a => a.UnreadCount)
+                .Select(a => $"{a.DisplayName}: {a.UnreadCount}")
+                .ToList();
+
+            string detail = string.Join(" · ", parts);
+            string full = $"{header}\n{detail}";
+            if (full.Length <= maxLength)
+                return full;
+
+            // Bớt dần tài khoản cuối danh sách, thêm "…" cho tới khi vừa giới hạn
+            for (int keep = parts.Count - 1; keep >= 1; keep--)
+            {
+                string shortDetail = string.Join(" · ", parts.Take(keep)) + " …";
+                string candidate = $"{header}\n{shortDetail}";
+                if (candidate.Length <= maxLength)
+                    return candidate;
+            }
+            return header.Length <= maxLength ? header : header.Substring(0, maxLength);
+        }
+
+        [RelayCommand]
+        private void ToggleAccountNotificationMute(ZaloAccountProfile? profile)
+        {
+            if (profile == null)
+                return;
+            profile.IsNotificationMuted = !profile.IsNotificationMuted;
+            DatabaseService.UpsertAccount(profile);
+            if (profile.IsNotificationMuted && NotificationAccount?.Id == profile.Id)
+            {
+                IsInAppNotificationVisible = false;
+                _toastDismissTimer.Stop();
+            }
+        }
+
         public void RefreshStatusMetrics()
         {
             int totalUnread = Accounts.Sum(a => a.UnreadCount);
@@ -807,6 +893,10 @@ namespace ZaloMultiWorkspace.ViewModels
                 : "Tự động khóa: Tắt — nhấn để cấu hình";
 
             UnreadShortText = totalUnread.ToString();
+            // Chấm đỏ khay + badge taskbar có thể tắt trong Cài đặt > Thông báo
+            TrayHasUnread = settings.ShowUnreadBadge && totalUnread > 0;
+            TotalUnreadCount = settings.ShowUnreadBadge ? totalUnread : 0;
+            TrayTooltipText = BuildTrayTooltip(totalUnread);
             RunningShortText = $"{runningCount}/{totalAccounts}";
             HibernatedShortText = hibernatedCount.ToString();
             RamShortText = $"{totalRamMb:0} MB";

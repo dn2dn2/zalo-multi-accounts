@@ -14,6 +14,7 @@ namespace ZaloMultiWorkspace.Views
     public partial class MainWindow : Window
     {
         public MainViewModel ViewModel { get; }
+        private readonly Services.TrayBadgeService _trayBadge = new();
         private bool _isExplicitExit = false;
 
         public MainWindow()
@@ -28,11 +29,93 @@ namespace ZaloMultiWorkspace.Views
             // Gắn Grid chứa các thực thể WebView2
             ViewModel.SessionManager.AttachHostGrid(WebViewHostGrid);
 
+            // Icon khay: chấm đỏ khi có tin chưa đọc + tooltip theo từng tài khoản
+            UpdateTrayIcon();
+            UpdateTaskbarBadge();
+            ViewModel.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.TrayHasUnread) ||
+                    e.PropertyName == nameof(MainViewModel.TrayTooltipText))
+                {
+                    UpdateTrayIcon();
+                }
+                else if (e.PropertyName == nameof(MainViewModel.TotalUnreadCount))
+                {
+                    UpdateTaskbarBadge();
+                }
+            };
+
             // Nhận sự kiện thông báo tin nhắn mới để hiển thị Balloon góc màn hình
             ViewModel.OnTrayBalloonNotificationRequested += (title, message) =>
             {
                 TrayIcon.ShowBalloonTip(title, message, BalloonIcon.Info);
             };
+        }
+
+        private bool? _trayShowingBadge;
+        private int _taskbarBadgeCount = -1;
+
+        /// <summary>
+        /// Badge số tin chưa đọc trên nút ứng dụng ở thanh taskbar (overlay icon chuẩn của Windows).
+        /// Chỉ hiện khi cửa sổ có nút trên taskbar (đang mở hoặc thu nhỏ, không phải ẩn xuống khay).
+        /// </summary>
+        private void UpdateTaskbarBadge()
+        {
+            int count = ViewModel.TotalUnreadCount;
+            if (count == _taskbarBadgeCount)
+                return;
+            _taskbarBadgeCount = count;
+
+            TaskbarItemInfo ??= new System.Windows.Shell.TaskbarItemInfo();
+            TaskbarItemInfo.Overlay = count > 0 ? CreateBadgeImage(count) : null;
+            TaskbarItemInfo.Description = count > 0
+                ? $"Zalo Multi-Workspace Pro — {count} tin chưa đọc"
+                : "Zalo Multi-Workspace Pro";
+        }
+
+        private static System.Windows.Media.ImageSource CreateBadgeImage(int count)
+        {
+            const double size = 32; // vẽ 32px, Windows tự thu về kích thước overlay (16px ở 100%)
+            string text = count > 99 ? "99+" : count.ToString();
+            var visual = new System.Windows.Media.DrawingVisual();
+            using (var dc = visual.RenderOpen())
+            {
+                var red = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(229, 41, 62));
+                dc.DrawEllipse(red, new System.Windows.Media.Pen(System.Windows.Media.Brushes.White, 2),
+                    new Point(size / 2, size / 2), size / 2 - 1, size / 2 - 1);
+
+                double fontSize = text.Length switch { 1 => 22, 2 => 17, _ => 12 };
+                var ft = new System.Windows.Media.FormattedText(text,
+                    System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new System.Windows.Media.Typeface(new System.Windows.Media.FontFamily("Segoe UI"),
+                        FontStyles.Normal, FontWeights.Bold, FontStretches.Normal),
+                    fontSize, System.Windows.Media.Brushes.White, 1.0);
+                dc.DrawText(ft, new Point((size - ft.Width) / 2, (size - ft.Height) / 2));
+            }
+            var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap((int)size, (int)size, 96, 96,
+                System.Windows.Media.PixelFormats.Pbgra32);
+            bmp.Render(visual);
+            bmp.Freeze();
+            return bmp;
+        }
+
+        private void UpdateTrayIcon()
+        {
+            try
+            {
+                bool hasUnread = ViewModel.TrayHasUnread;
+                if (_trayShowingBadge != hasUnread)
+                {
+                    TrayIcon.Icon = hasUnread ? _trayBadge.BadgeIcon : _trayBadge.NormalIcon;
+                    _trayShowingBadge = hasUnread;
+                }
+                if (TrayIcon.ToolTipText != ViewModel.TrayTooltipText)
+                    TrayIcon.ToolTipText = ViewModel.TrayTooltipText;
+            }
+            catch
+            {
+                // Không để lỗi vẽ icon làm ảnh hưởng ứng dụng
+            }
         }
 
         private async void AccountItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -140,12 +223,76 @@ namespace ZaloMultiWorkspace.Views
 
         private void AddQuickReply_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new QuickReplyWindow();
+            var dlg = new QuickReplyWindow(null, ViewModel.AllQuickReplies);
             if (ShowAirspaceSafeDialog(dlg) == true)
             {
                 ViewModel.DatabaseService.UpsertQuickReply(dlg.QuickReplyItem);
                 ViewModel.AllQuickReplies.Add(dlg.QuickReplyItem);
                 ViewModel.ApplyQuickReplyFilter();
+                FlashQuickReply(dlg.QuickReplyItem);
+            }
+        }
+
+        private void OpenEditQuickReplyDialog(QuickReplyTemplate template)
+        {
+            var dlg = new QuickReplyWindow(template, ViewModel.AllQuickReplies);
+            if (ShowAirspaceSafeDialog(dlg) == true)
+            {
+                ViewModel.DatabaseService.UpsertQuickReply(template);
+                ViewModel.ApplyQuickReplyFilter();
+                FlashQuickReply(template);
+            }
+        }
+
+        /// <summary>Viền xanh lá ~1,2 giây trên tin mẫu vừa thêm/sửa</summary>
+        private void FlashQuickReply(QuickReplyTemplate template)
+        {
+            template.IsJustUpdated = true;
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1200) };
+            timer.Tick += (s, e) =>
+            {
+                timer.Stop();
+                template.IsJustUpdated = false;
+            };
+            timer.Start();
+        }
+
+        private void EditQuickReply_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.Tag is QuickReplyTemplate template)
+                OpenEditQuickReplyDialog(template);
+        }
+
+        private void QuickReplyCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2 && sender is FrameworkElement fe && fe.Tag is QuickReplyTemplate template)
+            {
+                e.Handled = true;
+                OpenEditQuickReplyDialog(template);
+            }
+        }
+
+        private void DeleteQuickReply_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement fe || fe.Tag is not QuickReplyTemplate template)
+                return;
+
+            ViewModel.IsModalDialogOpen = true;
+            try
+            {
+                var confirm = MessageBox.Show(
+                    this,
+                    $"Xóa tin mẫu {template.Shortcut} \"{template.Title}\"?",
+                    "Xác nhận xóa tin mẫu",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question,
+                    MessageBoxResult.No);
+                if (confirm == MessageBoxResult.Yes)
+                    ViewModel.DeleteQuickReplyCommand.Execute(template);
+            }
+            finally
+            {
+                ViewModel.IsModalDialogOpen = false;
             }
         }
 
@@ -179,6 +326,14 @@ namespace ZaloMultiWorkspace.Views
             if (sender is MenuItem mi && mi.CommandParameter is ZaloAccountProfile profile)
             {
                 OpenEditAccountDialog(profile);
+            }
+        }
+
+        private void ContextToggleMute_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi && mi.CommandParameter is ZaloAccountProfile profile)
+            {
+                ViewModel.ToggleAccountNotificationMuteCommand.Execute(profile);
             }
         }
 
@@ -248,6 +403,7 @@ namespace ZaloMultiWorkspace.Views
             {
                 ViewModel.SessionManager.HibernateAllSessions(ViewModel.Accounts);
                 TrayIcon.Dispose();
+                _trayBadge.Dispose();
             }
         }
 
