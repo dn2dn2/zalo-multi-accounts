@@ -166,6 +166,7 @@ namespace ZaloMultiWorkspace.Services
             // Giai đoạn 2: Kiểm tra Proxy trước khi mở WebView2
             var health = await _proxyHealthService.CheckProxyAsync(profile);
             profile.PingMs = health.PingMs;
+            profile.IsPingFailed = !health.IsHealthy;
 
             if (!health.IsHealthy && profile.HasProxy)
             {
@@ -536,6 +537,7 @@ namespace ZaloMultiWorkspace.Services
             profile.IsHibernated = true;
             profile.ConnectionStatus = AccountConnectionStatus.Hibernated;
             profile.RamUsageMb = 0;
+            profile.IsPingFailed = false;
             profile.StatusMessage = "Tài khoản đang ở chế độ Ngủ đông để tiết kiệm RAM.";
             OnSessionStateChanged?.Invoke();
         }

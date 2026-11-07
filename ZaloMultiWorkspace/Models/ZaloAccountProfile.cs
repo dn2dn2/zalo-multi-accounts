@@ -34,21 +34,25 @@ namespace ZaloMultiWorkspace.Models
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasProxy))]
         [NotifyPropertyChangedFor(nameof(ProxyDisplayText))]
+        [NotifyPropertyChangedFor(nameof(NetworkTooltipTitle))]
         private string _proxyType = "http"; // http, socks5
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasProxy))]
         [NotifyPropertyChangedFor(nameof(ProxyDisplayText))]
+        [NotifyPropertyChangedFor(nameof(NetworkTooltipTitle))]
         private string _proxyAddress = string.Empty; // host:port hoặc toàn bộ chuỗi
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasProxy))]
         [NotifyPropertyChangedFor(nameof(ProxyDisplayText))]
+        [NotifyPropertyChangedFor(nameof(NetworkTooltipTitle))]
         private string _proxyHost = string.Empty;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasProxy))]
         [NotifyPropertyChangedFor(nameof(ProxyDisplayText))]
+        [NotifyPropertyChangedFor(nameof(NetworkTooltipTitle))]
         private int _proxyPort = 0;
 
         [ObservableProperty]
@@ -102,7 +106,18 @@ namespace ZaloMultiWorkspace.Models
 
         [BsonIgnore]
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(PingChipText))]
+        [NotifyPropertyChangedFor(nameof(PingLevel))]
+        [NotifyPropertyChangedFor(nameof(NetworkTooltipStatus))]
         private AccountConnectionStatus _connectionStatus = AccountConnectionStatus.Hibernated;
+
+        /// <summary>Lần đo Ping định kỳ gần nhất thất bại (phiên vẫn chạy, chỉ báo đỏ trên chip)</summary>
+        [ObservableProperty]
+        [property: BsonIgnore]
+        [NotifyPropertyChangedFor(nameof(PingChipText))]
+        [NotifyPropertyChangedFor(nameof(PingLevel))]
+        [NotifyPropertyChangedFor(nameof(NetworkTooltipStatus))]
+        private bool _isPingFailed = false;
 
         [BsonIgnore]
         [ObservableProperty]
@@ -183,6 +198,9 @@ namespace ZaloMultiWorkspace.Models
         [BsonIgnore]
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(PingDisplayText))]
+        [NotifyPropertyChangedFor(nameof(PingChipText))]
+        [NotifyPropertyChangedFor(nameof(PingLevel))]
+        [NotifyPropertyChangedFor(nameof(NetworkTooltipStatus))]
         private long _pingMs = -1;
 
         [BsonIgnore]
@@ -218,6 +236,50 @@ namespace ZaloMultiWorkspace.Models
                 return "Mạng trực tiếp (Direct IP)";
             }
         }
+
+        /// <summary>Ngưỡng Ping (ms) coi là mạng chậm</summary>
+        public const int SlowPingThresholdMs = 300;
+
+        private bool IsNetworkError => ConnectionStatus == AccountConnectionStatus.ProxyError || IsPingFailed;
+        private bool HasLivePing => ConnectionStatus == AccountConnectionStatus.Online && PingMs >= 0;
+
+        /// <summary>Nội dung chip mạng gọn trên thanh tiêu đề: "Ping 42ms" / "Ping —" / "Mất kết nối"</summary>
+        [BsonIgnore]
+        public string PingChipText =>
+            IsNetworkError ? "Mất kết nối" : HasLivePing ? $"Ping {PingMs}ms" : "Ping —";
+
+        /// <summary>Good / Slow / Error / Unknown - dùng cho màu chấm và màu chữ của chip</summary>
+        [BsonIgnore]
+        public string PingLevel =>
+            IsNetworkError ? "Error"
+            : !HasLivePing ? "Unknown"
+            : PingMs > SlowPingThresholdMs ? "Slow"
+            : "Good";
+
+        [BsonIgnore]
+        public string NetworkTooltipTitle
+        {
+            get
+            {
+                string type = string.IsNullOrWhiteSpace(ProxyType) ? "http" : ProxyType.ToLowerInvariant();
+                if (!string.IsNullOrWhiteSpace(ProxyHost) && ProxyPort > 0)
+                    return $"Proxy {type}: {ProxyHost}:{ProxyPort}";
+                if (!string.IsNullOrWhiteSpace(ProxyAddress))
+                    return $"Proxy {type}: {ProxyAddress}";
+                return "Mạng trực tiếp (Direct IP)";
+            }
+        }
+
+        [BsonIgnore]
+        public string NetworkTooltipStatus => PingLevel switch
+        {
+            "Error" => HasProxy ? "Không thể kết nối qua Proxy" : "Không kết nối được tới Zalo",
+            "Unknown" => ConnectionStatus == AccountConnectionStatus.Connecting
+                ? "Đang kiểm tra kết nối..."
+                : "Chưa khởi chạy phiên",
+            "Slow" => "Kết nối chậm - nhấn để cấu hình Proxy",
+            _ => "Nhấn để cấu hình Proxy"
+        };
 
         [BsonIgnore]
         public string PingDisplayText => PingMs >= 0 ? $" ({PingMs}ms)" : string.Empty;

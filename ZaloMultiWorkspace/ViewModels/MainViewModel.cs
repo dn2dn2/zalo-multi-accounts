@@ -72,7 +72,30 @@ namespace ZaloMultiWorkspace.ViewModels
         private string _lastAutoFilledCustomerName = string.Empty;
         private double _lastTotalRamMb = 0;
 
-        // --- Status Bar ---
+        // --- Status Bar (bản gọn hiển thị trên thanh, bản đầy đủ *Text dùng làm tooltip) ---
+        [ObservableProperty]
+        private string _unreadShortText = "0";
+
+        [ObservableProperty]
+        private string _runningShortText = "0/0";
+
+        [ObservableProperty]
+        private string _hibernatedShortText = "0";
+
+        [ObservableProperty]
+        private string _ramShortText = "0 MB";
+
+        [ObservableProperty]
+        private string _autoLockShortText = "Tắt";
+
+        [ObservableProperty]
+        private bool _isAutoLockOn = false;
+
+        // Đo lại Ping định kỳ cho tài khoản đang chọn
+        private static readonly TimeSpan PingRefreshInterval = TimeSpan.FromSeconds(60);
+        private DateTime _lastPingRefresh = DateTime.MinValue;
+        private bool _isPingRefreshRunning = false;
+
         [ObservableProperty]
         private string _totalUnreadText = "🔔 Tổng chưa đọc: 0 tin";
 
@@ -201,6 +224,7 @@ namespace ZaloMultiWorkspace.ViewModels
                 newValue.IsSelected = true;
                 newValue.LastInteractionTime = DateTime.Now;
                 CurrentActiveChatName = newValue.ActiveChatName;
+                _lastPingRefresh = DateTime.MinValue;
                 AutoFillCustomerName(newValue.ActiveChatName);
                 LoadCustomerNotesForAccount(newValue.Id);
 
@@ -662,9 +686,40 @@ namespace ZaloMultiWorkspace.ViewModels
                 }
             }
 
-            // 3. Đo RAM (tốn tài nguyên -> chỉ chạy theo chu kỳ 5 giây) và cập nhật Status Bar
+            // 3. Đo lại Ping của tài khoản đang chọn mỗi 60 giây để chip mạng phản ánh tình trạng thực
+            _ = RefreshSelectedPingIfDueAsync();
+
+            // 4. Đo RAM (tốn tài nguyên -> chỉ chạy theo chu kỳ 5 giây) và cập nhật Status Bar
             _lastTotalRamMb = SessionManager.MeasureTotalRamUsageMb(Accounts);
             RefreshStatusMetrics();
+        }
+
+        private async Task RefreshSelectedPingIfDueAsync()
+        {
+            var acc = SelectedAccount;
+            if (acc == null || _isPingRefreshRunning ||
+                acc.ConnectionStatus != AccountConnectionStatus.Online ||
+                !SessionManager.IsSessionRunning(acc.Id) ||
+                DateTime.Now - _lastPingRefresh < PingRefreshInterval)
+                return;
+
+            _isPingRefreshRunning = true;
+            _lastPingRefresh = DateTime.Now;
+            try
+            {
+                var result = await ProxyHealthService.CheckProxyAsync(acc);
+                // Không chuyển trạng thái phiên sang lỗi (tránh che WebView), chỉ báo trên chip
+                acc.IsPingFailed = !result.IsHealthy;
+                acc.PingMs = result.PingMs;
+            }
+            catch
+            {
+                acc.IsPingFailed = true;
+            }
+            finally
+            {
+                _isPingRefreshRunning = false;
+            }
         }
 
         public void RefreshStatusMetrics()
@@ -678,13 +733,20 @@ namespace ZaloMultiWorkspace.ViewModels
             double totalRamMb = _lastTotalRamMb;
             var settings = DatabaseService.GetSettings(); // lấy từ bộ nhớ đệm, không mở DB
 
-            TotalUnreadText = $"🔔 Tổng chưa đọc: {totalUnread} tin";
-            RunningStatsText = $"🟢 Đang chạy: {runningCount}/{totalAccounts} tài khoản";
-            HibernatedStatsText = $"💤 Ngủ đông: {hibernatedCount}";
-            TotalRamUsageText = $"⚡ RAM tiến trình WebView2: ~{totalRamMb:0} MB";
+            TotalUnreadText = $"Tổng tin chưa đọc: {totalUnread}";
+            RunningStatsText = $"Đang chạy: {runningCount}/{totalAccounts} tài khoản";
+            HibernatedStatsText = $"Ngủ đông: {hibernatedCount} tài khoản";
+            TotalRamUsageText = $"RAM các tiến trình WebView2: ~{totalRamMb:0} MB";
             AutoLockStatusText = settings.IsAutoLockEnabled
-                ? $"🔒 Tự động khóa: Bật ({settings.AutoLockIdleMinutes}p)"
-                : "🔓 Tự động khóa: Tắt";
+                ? $"Tự động khóa sau {settings.AutoLockIdleMinutes} phút không thao tác — nhấn để cấu hình"
+                : "Tự động khóa: Tắt — nhấn để cấu hình";
+
+            UnreadShortText = totalUnread.ToString();
+            RunningShortText = $"{runningCount}/{totalAccounts}";
+            HibernatedShortText = hibernatedCount.ToString();
+            RamShortText = $"{totalRamMb:0} MB";
+            IsAutoLockOn = settings.IsAutoLockEnabled;
+            AutoLockShortText = settings.IsAutoLockEnabled ? $"{settings.AutoLockIdleMinutes}p" : "Tắt";
 
             OnPropertyChanged(nameof(IsSelectedSessionRunning));
             OnPropertyChanged(nameof(ShowPlaceholderOverlay));

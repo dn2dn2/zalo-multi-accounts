@@ -42,6 +42,86 @@
             </Setter>
         </Style>
 
+        <!-- Font icon hệ thống: Segoe Fluent Icons (Win 11), tự fallback Segoe MDL2 Assets (Win 10) -->
+        <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+        <!-- Tooltip tối màu dùng chung toàn cửa sổ -->
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="#0B0B0D"/>
+            <Setter Property="Foreground" Value="#F4F4F6"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="9,6"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="HasDropShadow" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Nút chỉ có icon 32x32, nội dung (Content) là mã glyph -->
+        <Style x:Key="IconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="Foreground" Value="#A1A1AA"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="250"/>
+            <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#26262E"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#32323D"/>
+                                <Setter Property="Foreground" Value="#F4F4F6"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#32323D"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Biến thể bật/tắt: sáng xanh khi khung Trợ lý CSKH đang mở -->
+        <Style x:Key="DrawerToggleIconButtonStyle" TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsRightDrawerOpen}" Value="True">
+                    <Setter Property="Background" Value="#1A0068FF"/>
+                    <Setter Property="BorderBrush" Value="#0068FF"/>
+                    <Setter Property="Foreground" Value="#60A5FA"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="StatusIconStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,1,5,0"/>
+        </Style>
+
         <Style x:Key="QuickReplyCardStyle" TargetType="Border">
             <Setter Property="Background" Value="#26262E"/>
             <Setter Property="BorderBrush" Value="#2E2E38"/>
@@ -229,36 +309,117 @@
                             <Border Background="#1E3A8A" CornerRadius="4" Padding="6,2" Margin="0,0,12,0" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding SelectedAccount.TagCategory, FallbackValue='Workspace'}" FontSize="11" Foreground="#93C5FD"/>
                             </Border>
-                            <Border Background="#26262E" BorderBrush="#32323D" BorderThickness="1" CornerRadius="4" Padding="8,3" VerticalAlignment="Center"
-                                    Cursor="Hand" MouseLeftButtonDown="EditSelectedAccountProxy_Click" ToolTip="Nhấn để cấu hình Proxy cho tài khoản này">
+                            <!-- Chip mạng: "Ping 42ms", chi tiết Proxy/Direct IP nằm trong tooltip -->
+                            <Border BorderThickness="1" CornerRadius="4" Padding="8,3" VerticalAlignment="Center"
+                                    Cursor="Hand" MouseLeftButtonDown="EditSelectedAccountProxy_Click"
+                                    ToolTipService.InitialShowDelay="250">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="#26262E"/>
+                                        <Setter Property="BorderBrush" Value="#32323D"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="BorderBrush" Value="#52525B"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Border.ToolTip>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding SelectedAccount.NetworkTooltipTitle, FallbackValue='Mạng trực tiếp (Direct IP)'}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding SelectedAccount.NetworkTooltipStatus, FallbackValue='Nhấn để cấu hình Proxy'}" Foreground="#71717A"/>
+                                    </StackPanel>
+                                </Border.ToolTip>
                                 <StackPanel Orientation="Horizontal">
+                                    <!-- Icon khiên khi đi qua Proxy, chấm trạng thái khi mạng trực tiếp -->
+                                    <TextBlock Text="&#xEA18;" Style="{StaticResource StatusIconStyle}" Foreground="#60A5FA"
+                                               Visibility="{Binding SelectedAccount.HasProxy, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
                                     <Ellipse Width="7" Height="7" VerticalAlignment="Center" Margin="0,0,6,0">
                                         <Ellipse.Style>
                                             <Style TargetType="Ellipse">
                                                 <Setter Property="Fill" Value="#22C55E"/>
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding SelectedAccount.ConnectionStatus}" Value="ProxyError">
+                                                    <DataTrigger Binding="{Binding SelectedAccount.PingLevel}" Value="Slow">
+                                                        <Setter Property="Fill" Value="#F59E0B"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding SelectedAccount.PingLevel}" Value="Error">
                                                         <Setter Property="Fill" Value="#EF4444"/>
                                                     </DataTrigger>
-                                                    <DataTrigger Binding="{Binding SelectedAccount.ConnectionStatus}" Value="Hibernated">
-                                                        <Setter Property="Fill" Value="#F59E0B"/>
+                                                    <DataTrigger Binding="{Binding SelectedAccount.PingLevel}" Value="Unknown">
+                                                        <Setter Property="Fill" Value="#52525B"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding SelectedAccount.HasProxy}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding SelectedAccount.PingLevel}" Value="Error">
+                                                        <Setter Property="Visibility" Value="Visible"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </Ellipse.Style>
                                     </Ellipse>
-                                    <TextBlock Text="{Binding SelectedAccount.ProxyDisplayText, FallbackValue='Mạng trực tiếp'}" FontSize="11" Foreground="#A1A1AA"/>
-                                    <TextBlock Text="{Binding SelectedAccount.PingDisplayText}" FontSize="11" Foreground="#22C55E" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding SelectedAccount.PingChipText, FallbackValue='Ping —'}" FontSize="11" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#A1A1AA"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedAccount.PingLevel}" Value="Good">
+                                                        <Setter Property="Foreground" Value="#4ADE80"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding SelectedAccount.PingLevel}" Value="Slow">
+                                                        <Setter Property="Foreground" Value="#FBBF24"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding SelectedAccount.PingLevel}" Value="Error">
+                                                        <Setter Property="Foreground" Value="#F87171"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                            <Button Content="🔄 Tải lại" Command="{Binding ReloadCurrentAccountCommand}" Style="{StaticResource ToolbarButtonStyle}" FontSize="12"/>
-                            <Button Content="💤 Ngủ đông" Command="{Binding HibernateCurrentAccountCommand}" Style="{StaticResource ToolbarButtonStyle}" FontSize="12"/>
-                            <Button Content="📂 Mở Profile" Command="{Binding OpenProfileFolderCommand}" Style="{StaticResource ToolbarButtonStyle}" FontSize="12"/>
-                            <Button Content="🔒 Khóa nhanh" Command="{Binding LockWorkspaceCommand}" Style="{StaticResource ToolbarButtonStyle}" FontSize="12"/>
-                            <Button Content="📌 Trợ lý CSKH" Command="{Binding ToggleRightDrawerCommand}" Style="{StaticResource ToolbarButtonStyle}" FontSize="12" Background="#0068FF" BorderBrush="#0068FF"/>
+                            <Button Content="&#xE72C;" Command="{Binding ReloadCurrentAccountCommand}" Style="{StaticResource IconButtonStyle}"
+                                    AutomationProperties.Name="Tải lại">
+                                <Button.ToolTip>
+                                    <StackPanel>
+                                        <TextBlock Text="Tải lại trang Zalo" FontWeight="SemiBold"/>
+                                        <TextBlock Text="F5" Foreground="#71717A"/>
+                                    </StackPanel>
+                                </Button.ToolTip>
+                            </Button>
+                            <Button Content="&#xE708;" Command="{Binding HibernateCurrentAccountCommand}" Style="{StaticResource IconButtonStyle}"
+                                    AutomationProperties.Name="Ngủ đông">
+                                <Button.ToolTip>
+                                    <StackPanel>
+                                        <TextBlock Text="Ngủ đông tài khoản" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Giải phóng RAM, giữ đăng nhập" Foreground="#71717A"/>
+                                    </StackPanel>
+                                </Button.ToolTip>
+                            </Button>
+                            <Button Content="&#xE8B7;" Command="{Binding OpenProfileFolderCommand}" Style="{StaticResource IconButtonStyle}"
+                                    AutomationProperties.Name="Mở thư mục Profile" ToolTip="Mở thư mục Profile"/>
+                            <Border Width="1" Height="20" Background="#2E2E38" Margin="6,0" VerticalAlignment="Center"/>
+                            <Button Content="&#xE72E;" Command="{Binding LockWorkspaceCommand}" Style="{StaticResource IconButtonStyle}"
+                                    AutomationProperties.Name="Khóa nhanh">
+                                <Button.ToolTip>
+                                    <StackPanel>
+                                        <TextBlock Text="Khóa nhanh" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Ctrl + L" Foreground="#71717A"/>
+                                    </StackPanel>
+                                </Button.ToolTip>
+                            </Button>
+                            <Button Content="&#xE90D;" Command="{Binding ToggleRightDrawerCommand}" Style="{StaticResource DrawerToggleIconButtonStyle}"
+                                    AutomationProperties.Name="Ẩn hoặc hiện Trợ lý CSKH">
+                                <Button.ToolTip>
+                                    <StackPanel>
+                                        <TextBlock Text="Ẩn/hiện Trợ lý CSKH" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Tin mẫu và Ghi chú KH" Foreground="#71717A"/>
+                                    </StackPanel>
+                                </Button.ToolTip>
+                            </Button>
                         </StackPanel>
                     </DockPanel>
                 </Border>
@@ -444,16 +605,42 @@
         <!-- ZONE 5: BOTTOM STATUS BAR -->
         <Border Grid.Row="1" Background="#141417" BorderBrush="#2E2E38" BorderThickness="0,1,0,0" Padding="14,0">
             <DockPanel VerticalAlignment="Center">
+                <!-- Bản gọn: icon + con số; câu đầy đủ nằm trong tooltip -->
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding TotalUnreadText}" FontSize="11" Foreground="#F87171" FontWeight="SemiBold" Margin="0,0,16,0"/>
-                    <TextBlock Text="|" Foreground="#3F3F46" Margin="0,0,16,0"/>
-                    <TextBlock Text="{Binding RunningStatsText}" FontSize="11" Foreground="#A1A1AA" Margin="0,0,16,0"/>
-                    <TextBlock Text="{Binding HibernatedStatsText}" FontSize="11" Foreground="#FBBF24"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,16,0" Background="Transparent" ToolTip="{Binding TotalUnreadText}">
+                        <TextBlock Text="&#xEA8F;" Style="{StaticResource StatusIconStyle}" Foreground="#F87171"/>
+                        <TextBlock Text="{Binding UnreadShortText}" FontSize="11" Foreground="#F87171" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,16,0" Background="Transparent" ToolTip="{Binding RunningStatsText}">
+                        <TextBlock Text="&#xE768;" Style="{StaticResource StatusIconStyle}" Foreground="#4ADE80"/>
+                        <TextBlock Text="{Binding RunningShortText}" FontSize="11" Foreground="#A1A1AA" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Background="Transparent" ToolTip="{Binding HibernatedStatsText}">
+                        <TextBlock Text="&#xE708;" Style="{StaticResource StatusIconStyle}" Foreground="#FBBF24"/>
+                        <TextBlock Text="{Binding HibernatedShortText}" FontSize="11" Foreground="#FBBF24" VerticalAlignment="Center"/>
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <TextBlock Text="{Binding TotalRamUsageText}" FontSize="11" Foreground="#9CA3AF" Margin="0,0,16,0"/>
-                    <TextBlock Text="{Binding AutoLockStatusText}" FontSize="11" Foreground="#60A5FA" Cursor="Hand"
-                               MouseLeftButtonDown="OpenSettings_Click" ToolTip="Nhấn để cấu hình Tự động khóa &amp; Sao lưu"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,16,0" Background="Transparent" ToolTip="{Binding TotalRamUsageText}">
+                        <TextBlock Text="&#xE9D9;" Style="{StaticResource StatusIconStyle}" Foreground="#9CA3AF"/>
+                        <TextBlock Text="{Binding RamShortText}" FontSize="11" Foreground="#9CA3AF" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Background="Transparent" Cursor="Hand"
+                                MouseLeftButtonDown="OpenSettings_Click" ToolTip="{Binding AutoLockStatusText}">
+                        <TextBlock Foreground="#60A5FA">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource StatusIconStyle}">
+                                    <Setter Property="Text" Value="&#xE785;"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsAutoLockOn}" Value="True">
+                                            <Setter Property="Text" Value="&#xE72E;"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="{Binding AutoLockShortText}" FontSize="11" Foreground="#60A5FA" VerticalAlignment="Center"/>
+                    </StackPanel>
                 </StackPanel>
             </DockPanel>
         </Border>

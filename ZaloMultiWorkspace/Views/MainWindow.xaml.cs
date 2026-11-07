@@ -45,6 +45,15 @@ namespace ZaloMultiWorkspace.Views
         /// </summary>
         private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // F5: tải lại trang Zalo của tài khoản đang chọn (khi WebView2 đang focus, nó tự xử lý F5)
+            if (e.Key == Key.F5 && Keyboard.Modifiers == ModifierKeys.None && !ViewModel.IsLocked)
+            {
+                if (ViewModel.ReloadCurrentAccountCommand.CanExecute(null))
+                    ViewModel.ReloadCurrentAccountCommand.Execute(null);
+                e.Handled = true;
+                return;
+            }
+
             if (Keyboard.Modifiers == ModifierKeys.Control)
             {
                 if (e.Key >= Key.D1 && e.Key <= Key.D9)
