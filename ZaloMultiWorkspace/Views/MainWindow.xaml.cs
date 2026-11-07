@@ -145,6 +145,13 @@ namespace ZaloMultiWorkspace.Views
                 return;
             }
 
+            if (e.Key == Key.D && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && !ViewModel.IsLocked)
+            {
+                e.Handled = true;
+                await ViewModel.GrabSelectionAndTranslateAsync();
+                return;
+            }
+
             if (Keyboard.Modifiers == ModifierKeys.Control)
             {
                 if (e.Key >= Key.D1 && e.Key <= Key.D9)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -13,11 +14,19 @@ using ZaloMultiWorkspace.Services;
 
 namespace ZaloMultiWorkspace.ViewModels
 {
+    public enum DrawerTab
+    {
+        QuickReply,
+        Notes,
+        Translate
+    }
+
     public partial class MainViewModel : ObservableObject
     {
         public DatabaseService DatabaseService { get; }
         public ProxyHealthService ProxyHealthService { get; }
         public JsBridgeService JsBridgeService { get; }
+        public TranslationService TranslationService { get; } = new();
         public WebViewSessionManager SessionManager { get; }
         public BackupRestoreService BackupRestoreService { get; }
 
@@ -55,11 +64,16 @@ namespace ZaloMultiWorkspace.ViewModels
         [ObservableProperty]
         private bool _isRightDrawerOpen = true;
 
+        /// <summary>Tab đang mở ở khung bên phải: Tin mẫu / Ghi chú / Dịch</summary>
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsQuickReplyTabActive))]
         [NotifyPropertyChangedFor(nameof(IsCustomerNotesTabActive))]
-        private bool _isQuickReplyTabActive = true;
+        [NotifyPropertyChangedFor(nameof(IsTranslateTabActive))]
+        private DrawerTab _activeDrawerTab = DrawerTab.QuickReply;
 
-        public bool IsCustomerNotesTabActive => !IsQuickReplyTabActive;
+        public bool IsQuickReplyTabActive => ActiveDrawerTab == DrawerTab.QuickReply;
+        public bool IsCustomerNotesTabActive => ActiveDrawerTab == DrawerTab.Notes;
+        public bool IsTranslateTabActive => ActiveDrawerTab == DrawerTab.Translate;
 
         // --- Mini-CRM Note fields ---
         [ObservableProperty]
@@ -268,6 +282,7 @@ namespace ZaloMultiWorkspace.ViewModels
             SessionManager.OnActiveChatChanged += HandleActiveChatChanged;
             SessionManager.OnAvatarUpdated += profile => DatabaseService.UpsertAccount(profile);
             SessionManager.OnSessionStateChanged += RefreshStatusMetrics;
+            SessionManager.OnTranslateRequested += HandleTranslateRequested;
 
             _toastDismissTimer = new DispatcherTimer
             {
@@ -282,6 +297,7 @@ namespace ZaloMultiWorkspace.ViewModels
             LoadInitialData();
 
             ThemeMode = DatabaseService.GetSettings().ThemeMode;
+            LoadTranslationSettings();
             IsHorizontalLayout = DatabaseService.GetSettings().AccountLayout == AccountLayoutMode.Horizontal;
             ThemeService.EffectiveThemeChanged += _ => OnPropertyChanged(nameof(ThemeTooltipHint));
 
@@ -335,6 +351,7 @@ namespace ZaloMultiWorkspace.ViewModels
                 newValue.IsSelected = true;
                 newValue.LastInteractionTime = DateTime.Now;
                 CurrentActiveChatName = newValue.ActiveChatName;
+                ApplyRememberedComposeTarget();
                 _lastPingRefresh = DateTime.MinValue;
                 AutoFillCustomerName(newValue.ActiveChatName);
                 LoadCustomerNotesForAccount(newValue.Id);
@@ -533,13 +550,19 @@ namespace ZaloMultiWorkspace.ViewModels
         [RelayCommand]
         private void SwitchToQuickReplyTab()
         {
-            IsQuickReplyTabActive = true;
+            ActiveDrawerTab = DrawerTab.QuickReply;
         }
 
         [RelayCommand]
         private void SwitchToCustomerNotesTab()
         {
-            IsQuickReplyTabActive = false;
+            ActiveDrawerTab = DrawerTab.Notes;
+        }
+
+        [RelayCommand]
+        private void SwitchToTranslateTab()
+        {
+            ActiveDrawerTab = DrawerTab.Translate;
         }
 
         // --- Quick Reply Actions ---
@@ -782,6 +805,7 @@ namespace ZaloMultiWorkspace.ViewModels
             if (profile.IsSelected)
             {
                 CurrentActiveChatName = activeChatName;
+                ApplyRememberedComposeTarget();
                 AutoFillCustomerName(activeChatName);
                 ApplyActiveChatNoteMatching();
             }
@@ -930,6 +954,280 @@ namespace ZaloMultiWorkspace.ViewModels
             }
             OnPropertyChanged(nameof(IsSelectedSessionRunning));
             OnPropertyChanged(nameof(ShowPlaceholderOverlay));
+        }
+
+        // ======================= DỊCH TIN NHẮN =======================
+        public IReadOnlyList<LanguageInfo> SourceLanguageList => TranslationService.SourceLanguages;
+        public IReadOnlyList<LanguageInfo> TargetLanguageList => TranslationService.Languages;
+        public ObservableCollection<LanguageInfo> PinnedLanguages { get; } = new();
+
+        private static LanguageInfo Lang(string code) =>
+            TranslationService.SourceLanguages.FirstOrDefault(l => l.Code == code) ?? TranslationService.Languages[0];
+
+        // --- B: dịch đoạn đã chọn ---
+        [ObservableProperty] private string _readText = string.Empty;
+        [ObservableProperty] private LanguageInfo _readSource = Lang(TranslationService.AutoDetect);
+        [ObservableProperty] private LanguageInfo _readTarget = Lang("vi");
+        [ObservableProperty] private string _readResult = string.Empty;
+        [ObservableProperty] private string _readDetectedText = string.Empty;
+        [ObservableProperty] private bool _isReadBusy;
+
+        // --- C: soạn tin gửi khách ---
+        [ObservableProperty] private string _composeText = string.Empty;
+        [ObservableProperty] private LanguageInfo _composeSource = Lang("vi");
+        [ObservableProperty] private LanguageInfo _composeTarget = Lang("en");
+        [ObservableProperty] private string _composeResult = string.Empty;
+        [ObservableProperty] private bool _isComposeBusy;
+
+        // --- Lỗi chung + dịch lại bằng Google ---
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasTranslateError))]
+        private string _translateError = string.Empty;
+        [ObservableProperty] private bool _canFallbackToGoogle;
+        public bool HasTranslateError => !string.IsNullOrEmpty(TranslateError);
+        private bool _lastFailedWasCompose;
+
+        [ObservableProperty] private string _translateProviderText = "Google Dịch";
+
+        public void LoadTranslationSettings()
+        {
+            var settings = DatabaseService.GetSettings();
+            PinnedLanguages.Clear();
+            foreach (var code in settings.PinnedLanguages.Distinct())
+            {
+                var lang = TranslationService.Languages.FirstOrDefault(l => l.Code == code);
+                if (lang != null) PinnedLanguages.Add(lang);
+            }
+            if (settings.TranslateProvider == TranslationProvider.GoogleFree)
+            {
+                TranslateProviderText = "Google Dịch";
+            }
+            else
+            {
+                string model = TranslationService.IsGeminiNativeUrl(settings.AiApiUrl)
+                    ? TranslationService.ModelFromGeminiUrl(settings.AiApiUrl) ?? settings.AiModel
+                    : settings.AiModel;
+                TranslateProviderText = $"{TranslationService.ServiceNameFromUrl(settings.AiApiUrl)}"
+                                        + (string.IsNullOrWhiteSpace(model) ? string.Empty : $" ({model})");
+            }
+        }
+
+        private string ChatKey() =>
+            SelectedAccount == null || string.IsNullOrWhiteSpace(CurrentActiveChatName)
+                ? string.Empty
+                : $"{SelectedAccount.Id}|{CurrentActiveChatName.Trim().ToLowerInvariant()}";
+
+        /// <summary>Chọn lại ngôn ngữ đích đã dùng với cuộc chat này (khách Trung -> 中文...)</summary>
+        private void ApplyRememberedComposeTarget()
+        {
+            string key = ChatKey();
+            if (key.Length == 0) return;
+            if (DatabaseService.GetSettings().ChatTargetLanguages.TryGetValue(key, out var code))
+            {
+                var lang = TranslationService.Languages.FirstOrDefault(l => l.Code == code);
+                if (lang != null) ComposeTarget = lang;
+            }
+        }
+
+        private void RememberComposeTarget()
+        {
+            string key = ChatKey();
+            if (key.Length == 0) return;
+            var settings = DatabaseService.GetSettings();
+            if (settings.ChatTargetLanguages.TryGetValue(key, out var old) && old == ComposeTarget.Code)
+                return;
+            if (settings.ChatTargetLanguages.Count > 500)
+                settings.ChatTargetLanguages.Clear(); // giữ dữ liệu gọn
+            settings.ChatTargetLanguages[key] = ComposeTarget.Code;
+            DatabaseService.SaveSettings(settings);
+        }
+
+        private async Task<TranslationResult> RunTranslateAsync(string text, string src, string dst, TranslationProvider? forceProvider = null)
+        {
+            var settings = DatabaseService.GetSettings();
+            var provider = forceProvider ?? settings.TranslateProvider;
+            string key = settings.AiKeysProtected.TryGetValue(settings.AiPresetId, out var protectedKey)
+                ? SecurityHelper.Unprotect(protectedKey)
+                : string.Empty;
+            return await TranslationService.TranslateAsync(text, src, dst, provider,
+                settings.AiApiUrl, key, settings.AiModel, settings.TranslatePrompt);
+        }
+
+        private void ShowTranslateError(TranslationResult r, bool compose)
+        {
+            TranslateError = r.Error;
+            CanFallbackToGoogle = r.CanFallbackToGoogle;
+            _lastFailedWasCompose = compose;
+        }
+
+        [RelayCommand]
+        private async Task TranslateReadAsync() => await DoTranslateReadAsync(null);
+
+        private async Task DoTranslateReadAsync(TranslationProvider? forceProvider)
+        {
+            if (string.IsNullOrWhiteSpace(ReadText) || IsReadBusy) return;
+            IsReadBusy = true;
+            TranslateError = string.Empty;
+            ReadResult = "Đang dịch…";
+            ReadDetectedText = string.Empty;
+            try
+            {
+                var r = await RunTranslateAsync(ReadText.Trim(), ReadSource.Code, ReadTarget.Code, forceProvider);
+                if (r.Success)
+                {
+                    ReadResult = r.Text;
+                    if (ReadSource.Code == TranslationService.AutoDetect && !string.IsNullOrEmpty(r.DetectedLanguage))
+                        ReadDetectedText = "Nhận diện: " + TranslationService.NameOf(r.DetectedLanguage);
+                }
+                else
+                {
+                    ReadResult = string.Empty;
+                    ShowTranslateError(r, compose: false);
+                }
+            }
+            finally
+            {
+                IsReadBusy = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task TranslateComposeAsync() => await DoTranslateComposeAsync(null);
+
+        private async Task DoTranslateComposeAsync(TranslationProvider? forceProvider)
+        {
+            if (string.IsNullOrWhiteSpace(ComposeText) || IsComposeBusy) return;
+            IsComposeBusy = true;
+            TranslateError = string.Empty;
+            ComposeResult = "Đang dịch…";
+            try
+            {
+                var r = await RunTranslateAsync(ComposeText.Trim(), ComposeSource.Code, ComposeTarget.Code, forceProvider);
+                if (r.Success)
+                {
+                    ComposeResult = r.Text;
+                    RememberComposeTarget();
+                }
+                else
+                {
+                    ComposeResult = string.Empty;
+                    ShowTranslateError(r, compose: true);
+                }
+            }
+            finally
+            {
+                IsComposeBusy = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task FallbackToGoogleAsync()
+        {
+            TranslateError = string.Empty;
+            if (_lastFailedWasCompose)
+                await DoTranslateComposeAsync(TranslationProvider.GoogleFree);
+            else
+                await DoTranslateReadAsync(TranslationProvider.GoogleFree);
+        }
+
+        [RelayCommand]
+        private void SwapReadLanguages()
+        {
+            var newTarget = ReadSource.Code == TranslationService.AutoDetect ? Lang("en") : ReadSource;
+            ReadSource = ReadTarget;
+            ReadTarget = TranslationService.Languages.First(l => l.Code == newTarget.Code);
+            if (!string.IsNullOrWhiteSpace(ReadResult) && ReadResult != "Đang dịch…")
+            {
+                ReadText = ReadResult;
+                ReadResult = string.Empty;
+            }
+        }
+
+        [RelayCommand]
+        private void SwapComposeLanguages()
+        {
+            var newTarget = ComposeSource.Code == TranslationService.AutoDetect ? Lang("en") : ComposeSource;
+            ComposeSource = ComposeTarget;
+            ComposeTarget = TranslationService.Languages.First(l => l.Code == newTarget.Code);
+            if (!string.IsNullOrWhiteSpace(ComposeResult) && ComposeResult != "Đang dịch…")
+            {
+                ComposeText = ComposeResult;
+                ComposeResult = string.Empty;
+            }
+        }
+
+        [RelayCommand]
+        private async Task PickPinnedTargetAsync(LanguageInfo? lang)
+        {
+            if (lang == null) return;
+            ComposeTarget = lang;
+            if (!string.IsNullOrWhiteSpace(ComposeText))
+                await DoTranslateComposeAsync(null);
+        }
+
+        [RelayCommand]
+        private void CopyReadResult()
+        {
+            if (string.IsNullOrWhiteSpace(ReadResult)) return;
+            try { Clipboard.SetText(ReadResult); } catch { }
+        }
+
+        [RelayCommand]
+        private async Task InsertComposeResultAsync() => await PutComposeIntoChatAsync(send: false);
+
+        [RelayCommand]
+        private async Task SendComposeResultAsync() => await PutComposeIntoChatAsync(send: true);
+
+        private async Task PutComposeIntoChatAsync(bool send)
+        {
+            if (SelectedAccount == null || string.IsNullOrWhiteSpace(ComposeResult) || ComposeResult == "Đang dịch…")
+                return;
+            var webView = SessionManager.GetWebView(SelectedAccount.Id);
+            if (webView == null)
+            {
+                TranslateError = "Tài khoản chưa mở. Bấm Khởi chạy trước khi chèn tin.";
+                CanFallbackToGoogle = false;
+                return;
+            }
+            await JsBridgeService.InsertQuickReplyAsync(webView, SelectedAccount.Platform, ComposeResult.Trim(), null, sendImmediately: send);
+            if (send)
+            {
+                ComposeText = string.Empty;
+                ComposeResult = string.Empty;
+            }
+        }
+
+        /// <summary>Lấy đoạn đang bôi đen trong khung chat hiện tại rồi dịch</summary>
+        [RelayCommand]
+        public async Task GrabSelectionAndTranslateAsync()
+        {
+            if (SelectedAccount == null) return;
+            var webView = SessionManager.GetWebView(SelectedAccount.Id);
+            if (webView == null) return;
+            string text = await JsBridgeService.GetSelectedTextAsync(webView);
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                IsRightDrawerOpen = true;
+                ActiveDrawerTab = DrawerTab.Translate;
+                TranslateError = "Chưa bôi đen đoạn nào trong khung chat.";
+                CanFallbackToGoogle = false;
+                return;
+            }
+            await StartReadTranslationAsync(text);
+        }
+
+        private async void HandleTranslateRequested(ZaloAccountProfile profile, string text)
+        {
+            if (!profile.IsSelected) return;
+            await StartReadTranslationAsync(text);
+        }
+
+        private async Task StartReadTranslationAsync(string text)
+        {
+            IsRightDrawerOpen = true;
+            ActiveDrawerTab = DrawerTab.Translate;
+            ReadText = text.Length > 4000 ? text.Substring(0, 4000) : text;
+            await DoTranslateReadAsync(null);
         }
 
         public void RefreshStatusMetrics()

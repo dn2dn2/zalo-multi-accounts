@@ -72,6 +72,7 @@ namespace ZaloMultiWorkspace.Services
         public string? ActiveChatName { get; set; }
         public string? Sender { get; set; }
         public string? Body { get; set; }
+        public string? Text { get; set; }
     }
 
     public class JsBridgeService
@@ -383,6 +384,16 @@ namespace ZaloMultiWorkspace.Services
     }}, true);
     window.addEventListener('keydown', (e) => {{
         notifyActivity();
+        // Ctrl+Shift+D: gửi đoạn đang bôi đen sang tab Dịch của ứng dụng
+        if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {{
+            const sel = (window.getSelection ? window.getSelection().toString() : '').trim();
+            if (sel && window.chrome && window.chrome.webview) {{
+                window.chrome.webview.postMessage({{ type: 'TRANSLATE_SELECTION', text: sel }});
+            }}
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }}
         // Bắt phím Space hoặc Tab sau khi gõ cú pháp tắt /shortcut trong ô chat
         if (e.key === ' ' || e.key === 'Tab') {{
             const inputEl = qs(document, CHAT_INPUT_SEL);
@@ -407,6 +418,23 @@ namespace ZaloMultiWorkspace.Services
         pollProfileAndChatInfo();
     }}, 1500);
 }})();";
+        }
+
+        /// <summary>Lấy đoạn chữ đang bôi đen trong trang chat</summary>
+        public async Task<string> GetSelectedTextAsync(WebView2 webView)
+        {
+            if (webView?.CoreWebView2 == null)
+                return string.Empty;
+            try
+            {
+                string json = await webView.CoreWebView2.ExecuteScriptAsync(
+                    "(window.getSelection ? window.getSelection().toString() : '')");
+                return (JsonSerializer.Deserialize<string>(json) ?? string.Empty).Trim();
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
 
         [DllImport("user32.dll")]

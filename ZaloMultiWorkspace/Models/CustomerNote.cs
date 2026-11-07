@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using LiteDB;
 
@@ -94,6 +95,30 @@ namespace ZaloMultiWorkspace.Models
 
         /// <summary>Bố cục danh sách tài khoản: Horizontal (tab ngang, mặc định) / Vertical (thanh dọc bên trái)</summary>
         public AccountLayoutMode AccountLayout { get; set; } = AccountLayoutMode.Horizontal;
+
+        // --- Dịch tin nhắn ---
+        public Services.TranslationProvider TranslateProvider { get; set; } = Services.TranslationProvider.GoogleFree;
+        /// <summary>Khóa API đã mã hóa DPAPI (dùng SecurityHelper.Protect/Unprotect)</summary>
+        public string GeminiApiKeyProtected { get; set; } = string.Empty;
+        public string DeepSeekApiKeyProtected { get; set; } = string.Empty;
+        public string GeminiModel { get; set; } = Services.TranslationService.DefaultGeminiModel;
+        public string DeepSeekModel { get; set; } = Services.TranslationService.DefaultDeepSeekModel;
+        // --- Dịch bằng AI qua API URL ---
+        /// <summary>Nhà cung cấp đang chọn (DeepSeek, Gemini, OpenAI, OpenRouter, Custom)</summary>
+        public string AiPresetId { get; set; } = "DeepSeek";
+        public string AiApiUrl { get; set; } = string.Empty;
+        public string AiModel { get; set; } = string.Empty;
+        /// <summary>Khóa API theo từng nhà cung cấp (đã mã hóa DPAPI)</summary>
+        public Dictionary<string, string> AiKeysProtected { get; set; } = new();
+        /// <summary>Đã chuyển cấu hình Gemini/DeepSeek của bản trước sang AI theo URL</summary>
+        public bool AiConfigMigrated { get; set; } = false;
+
+        /// <summary>Prompt dịch cho AI (rỗng = dùng prompt mặc định)</summary>
+        public string TranslatePrompt { get; set; } = string.Empty;
+        /// <summary>Ngôn ngữ ghim để chọn nhanh khi soạn tin gửi khách</summary>
+        public List<string> PinnedLanguages { get; set; } = new() { "en", "zh-CN", "vi" };
+        /// <summary>Ngôn ngữ dùng lần trước cho từng cuộc chat: khóa "accountId|tên cuộc chat"</summary>
+        public Dictionary<string, string> ChatTargetLanguages { get; set; } = new();
 
         /// <summary>Chế độ giao diện: System (theo Windows, mặc định) / Light / Dark</summary>
         public Services.AppThemeMode ThemeMode { get; set; } = Services.AppThemeMode.System;

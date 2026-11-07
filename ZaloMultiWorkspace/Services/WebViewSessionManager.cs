@@ -31,6 +31,8 @@ namespace ZaloMultiWorkspace.Services
         public event Action<ZaloAccountProfile, string>? OnActiveChatChanged;
         public event Action<ZaloAccountProfile>? OnAvatarUpdated;
         public event Action? OnSessionStateChanged;
+        /// <summary>Người dùng bấm Ctrl+Shift+D trong trang chat (kèm đoạn bôi đen)</summary>
+        public event Action<ZaloAccountProfile, string>? OnTranslateRequested;
 
         public WebViewSessionManager(ProxyHealthService proxyHealthService, JsBridgeService jsBridgeService)
         {
@@ -422,6 +424,13 @@ namespace ZaloMultiWorkspace.Services
                             if (!string.IsNullOrWhiteSpace(msg.Shortcut))
                             {
                                 OnShortcutTriggered?.Invoke(profile, msg.Shortcut);
+                            }
+                            break;
+
+                        case "TRANSLATE_SELECTION":
+                            if (!string.IsNullOrWhiteSpace(msg.Text))
+                            {
+                                OnTranslateRequested?.Invoke(profile, msg.Text);
                             }
                             break;
 

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -41,10 +42,165 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             DndModeCombo.SelectedIndex = snoozing ? DndSnooze : _settings.IsDndScheduleEnabled ? DndSchedule : DndOff;
             UpdateDndUi();
 
+            // Tab Dịch
+            PromptBox.Text = string.IsNullOrWhiteSpace(_settings.TranslatePrompt)
+                ? Services.TranslationService.DefaultPrompt
+                : _settings.TranslatePrompt;
+            foreach (var kv in _settings.AiKeysProtected)
+                _aiKeys[kv.Key] = Services.SecurityHelper.Unprotect(kv.Value);
+            _loadingAi = true;
+            AiPresetCombo.ItemsSource = Services.TranslationService.AiPresets;
+            AiPresetCombo.SelectedItem = Services.TranslationService.AiPresets.FirstOrDefault(p => p.Id == _settings.AiPresetId)
+                                         ?? Services.TranslationService.AiPresets[0];
+            _currentPresetId = ((Services.AiPreset)AiPresetCombo.SelectedItem).Id;
+            AiUrlBox.Text = string.IsNullOrWhiteSpace(_settings.AiApiUrl) ? ((Services.AiPreset)AiPresetCombo.SelectedItem).Url : _settings.AiApiUrl;
+            AiModelBox.Text = string.IsNullOrWhiteSpace(_settings.AiApiUrl) ? ((Services.AiPreset)AiPresetCombo.SelectedItem).Model : _settings.AiModel;
+            AiKeyBox.Password = _aiKeys.TryGetValue(_currentPresetId, out var savedKey) ? savedKey : string.Empty;
+            _loadingAi = false;
+            UpdateAiUrlState();
+            (_settings.TranslateProvider == Services.TranslationProvider.GoogleFree ? ProviderGoogle : ProviderAi).IsChecked = true;
+            var langs = Services.TranslationService.Languages;
+            var pins = _settings.PinnedLanguages;
+            foreach (var (combo, index) in new[] { (Pin1Combo, 0), (Pin2Combo, 1), (Pin3Combo, 2) })
+            {
+                combo.ItemsSource = langs;
+                string code = index < pins.Count ? pins[index] : (index == 0 ? "en" : index == 1 ? "zh-CN" : "vi");
+                combo.SelectedItem = langs.FirstOrDefault(l => l.Code == code) ?? langs[0];
+            }
+
             // Tab Bảo mật
             DefaultPinWarningText.Visibility = _settings.IsUsingDefaultPin ? Visibility.Visible : Visibility.Collapsed;
             IdleMinutesTextBox.Text = _settings.AutoLockIdleMinutes.ToString();
             AutoLockCheckBox.IsChecked = _settings.IsAutoLockEnabled;
+        }
+
+        // --- Cấu hình AI ---
+        private readonly System.Collections.Generic.Dictionary<string, string> _aiKeys = new();
+        private string _currentPresetId = "DeepSeek";
+        private bool _loadingAi;
+
+        private void Provider_Checked(object sender, RoutedEventArgs e)
+        {
+            if (ProviderHintText == null || AiPanel == null || PromptPanel == null)
+                return;
+            bool ai = (sender as FrameworkElement)?.Tag?.ToString() == "Ai";
+            AiPanel.Visibility = ai ? Visibility.Visible : Visibility.Collapsed;
+            PromptPanel.Visibility = ai ? Visibility.Visible : Visibility.Collapsed;
+            TestStatusText.Text = string.Empty;
+            ProviderHintText.Text = ai
+                ? "Dịch theo ngữ cảnh bằng AI. Nhập API URL và API key của nhà cung cấp (Gemini, DeepSeek, OpenAI… hoặc dịch vụ tương thích OpenAI)."
+                : "Không cần khóa, dùng được ngay. Đây là cổng không chính thức nên đôi khi có thể bị giới hạn.";
+        }
+
+        /// <summary>Đổi nhà cung cấp: nhớ khóa của nhà cung cấp cũ, điền URL/mô hình mẫu và khóa đã lưu của nhà cung cấp mới</summary>
+        private void AiPresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_loadingAi || AiPresetCombo.SelectedItem is not Services.AiPreset preset)
+                return;
+            _aiKeys[_currentPresetId] = AiKeyBox.Password;
+            _currentPresetId = preset.Id;
+            if (preset.Id != "Custom")
+            {
+                AiUrlBox.Text = preset.Url;
+                AiModelBox.Text = preset.Model;
+            }
+            AiKeyBox.Password = _aiKeys.TryGetValue(preset.Id, out var key) ? key : string.Empty;
+            TestStatusText.Text = string.Empty;
+            UpdateAiUrlState();
+        }
+
+        private void AiUrlBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!_loadingAi)
+                UpdateAiUrlState();
+        }
+
+        /// <summary>URL Gemini đã có tên mô hình -> khóa ô Mô hình và hiển thị mô hình lấy từ URL</summary>
+        private void UpdateAiUrlState()
+        {
+            if (AiUrlBox == null || AiModelBox == null || AiUrlHint == null)
+                return;
+            string url = AiUrlBox.Text.Trim();
+            string? modelInUrl = Services.TranslationService.IsGeminiNativeUrl(url)
+                ? Services.TranslationService.ModelFromGeminiUrl(url)
+                : null;
+            if (modelInUrl != null)
+            {
+                AiModelBox.IsEnabled = false;
+                AiModelBox.Text = modelInUrl;
+                AiUrlHint.Text = $"Cổng riêng của Gemini. Mô hình lấy từ URL: {modelInUrl}.";
+            }
+            else
+            {
+                AiModelBox.IsEnabled = true;
+                AiUrlHint.Text = url.Length == 0
+                    ? "Nhập địa chỉ API của nhà cung cấp."
+                    : Services.TranslationService.IsGeminiNativeUrl(url)
+                        ? "Cổng riêng của Gemini. Nhập tên mô hình ở ô bên dưới."
+                        : "Chuẩn tương thích OpenAI (tự thêm /chat/completions nếu thiếu). Nhập tên mô hình ở ô bên dưới.";
+            }
+            if (AiPresetHint != null && AiPresetCombo.SelectedItem is Services.AiPreset p)
+            {
+                AiPresetHint.Text = p.Id switch
+                {
+                    "Gemini" => "Lấy khóa tại aistudio.google.com",
+                    "DeepSeek" => "Lấy khóa tại platform.deepseek.com",
+                    "OpenAI" => "Lấy khóa tại platform.openai.com",
+                    "OpenRouter" => "Lấy khóa tại openrouter.ai",
+                    _ => "Dịch vụ tương thích OpenAI hoặc Gemini"
+                };
+            }
+        }
+
+        private Services.TranslationProvider SelectedProvider =>
+            ProviderAi.IsChecked == true ? Services.TranslationProvider.Ai : Services.TranslationProvider.GoogleFree;
+
+        /// <summary>Gửi thử một câu ngắn với URL, khóa, mô hình và prompt đang nhập</summary>
+        private async void TestProvider_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn) return;
+            string name = Services.TranslationService.ServiceNameFromUrl(AiUrlBox.Text);
+            btn.IsEnabled = false;
+            TestStatusText.Foreground = (System.Windows.Media.Brush)FindResource("Brush.Text.Secondary");
+            TestStatusText.Text = $"⏳ Đang kiểm tra {name}…";
+            try
+            {
+                var r = await _mainViewModel.TranslationService.TranslateAsync(
+                    "Thank you, we will deliver tomorrow.", "auto", "vi", Services.TranslationProvider.Ai,
+                    AiUrlBox.Text, AiKeyBox.Password, AiModelBox.Text, PromptBox.Text);
+                if (r.Success)
+                {
+                    TestStatusText.Foreground = (System.Windows.Media.Brush)FindResource("Brush.Success.TextSoft");
+                    TestStatusText.Text = $"✅ {name} hoạt động. Dịch thử: \"{r.Text}\"";
+                }
+                else
+                {
+                    TestStatusText.Foreground = (System.Windows.Media.Brush)FindResource("Brush.Danger.Text");
+                    TestStatusText.Text = "❌ " + r.Error;
+                }
+            }
+            finally
+            {
+                btn.IsEnabled = true;
+            }
+        }
+
+        private void ResetPrompt_Click(object sender, RoutedEventArgs e)
+        {
+            PromptBox.Text = Services.TranslationService.DefaultPrompt;
+            TestStatusText.Text = "Đã khôi phục prompt mặc định (bấm Lưu để áp dụng).";
+        }
+
+        private void AddElectricalPreset_Click(object sender, RoutedEventArgs e)
+        {
+            if (PromptBox.Text.Contains("Main Switchboard (MSB)"))
+            {
+                TestStatusText.Text = "Prompt đã có mẫu Thiết kế điện.";
+                return;
+            }
+            PromptBox.Text = PromptBox.Text.TrimEnd() + "\n\n" + Services.TranslationService.ElectricalDesignPreset;
+            PromptBox.ScrollToEnd();
+            TestStatusText.Text = "Đã thêm mẫu Thiết kế điện vào cuối prompt. Sửa thuật ngữ theo cách công ty bạn dùng rồi bấm Lưu.";
         }
 
         private void Tab_Checked(object sender, RoutedEventArgs e)
@@ -55,6 +211,7 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             PanelNotify.Visibility = TabNotify.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             PanelSecurity.Visibility = TabSecurity.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             PanelBackup.Visibility = TabBackup.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            PanelTranslate.Visibility = TabTranslate.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void DndModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -206,6 +363,23 @@ namespace ZaloMultiWorkspace.Views.Dialogs
                 _settings.DndUntil = null;
             }
 
+            // --- Dịch ---
+            _settings.TranslateProvider = SelectedProvider;
+            _aiKeys[_currentPresetId] = AiKeyBox.Password;
+            _settings.AiPresetId = _currentPresetId;
+            _settings.AiApiUrl = AiUrlBox.Text.Trim();
+            _settings.AiModel = AiModelBox.Text.Trim();
+            _settings.AiKeysProtected = _aiKeys
+                .Where(kv => !string.IsNullOrWhiteSpace(kv.Value))
+                .ToDictionary(kv => kv.Key, kv => Services.SecurityHelper.Protect(kv.Value.Trim()));
+            // Lưu rỗng nếu trùng mặc định -> sau này mặc định được cải tiến sẽ tự áp dụng
+            _settings.TranslatePrompt = PromptBox.Text.Trim() == Services.TranslationService.DefaultPrompt.Trim()
+                ? string.Empty
+                : PromptBox.Text.Trim();
+            _settings.PinnedLanguages = new[] { Pin1Combo, Pin2Combo, Pin3Combo }
+                .Select(c => (c.SelectedItem as Services.LanguageInfo)?.Code)
+                .Where(c => !string.IsNullOrEmpty(c)).Select(c => c!).Distinct().ToList();
+
             // --- Bảo mật ---
             if (newPin.Length > 0)
                 _mainViewModel.DatabaseService.SetMasterPin(_settings, newPin);
@@ -213,6 +387,7 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             _settings.IsAutoLockEnabled = AutoLockCheckBox.IsChecked == true;
 
             _mainViewModel.DatabaseService.SaveSettings(_settings);
+            _mainViewModel.LoadTranslationSettings();
             _mainViewModel.RefreshStatusMetrics();
             DialogResult = true;
             Close();

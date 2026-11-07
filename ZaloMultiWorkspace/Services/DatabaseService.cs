@@ -70,6 +70,34 @@ namespace ZaloMultiWorkspace.Services
                 settings.AutoHibernateDefaultMigrated = true;
                 settingsCol.Upsert(settings);
             }
+            // Một lần: chuyển cấu hình dịch Gemini/DeepSeek riêng (bản trước) sang AI theo API URL
+            if (!settings.AiConfigMigrated)
+            {
+                if (!string.IsNullOrEmpty(settings.GeminiApiKeyProtected))
+                    settings.AiKeysProtected["Gemini"] = settings.GeminiApiKeyProtected;
+                if (!string.IsNullOrEmpty(settings.DeepSeekApiKeyProtected))
+                    settings.AiKeysProtected["DeepSeek"] = settings.DeepSeekApiKeyProtected;
+
+                bool useGemini = settings.TranslateProvider == TranslationProvider.Gemini
+                                 || (settings.TranslateProvider != TranslationProvider.DeepSeek
+                                     && string.IsNullOrEmpty(settings.DeepSeekApiKeyProtected)
+                                     && !string.IsNullOrEmpty(settings.GeminiApiKeyProtected));
+                var preset = TranslationService.AiPresets.First(p => p.Id == (useGemini ? "Gemini" : "DeepSeek"));
+                settings.AiPresetId = preset.Id;
+                settings.AiApiUrl = preset.Url;
+                settings.AiModel = useGemini ? string.Empty : settings.DeepSeekModel;
+                // Mô hình Gemini đã tự đổi ở bản trước thì giữ lại trong URL
+                if (useGemini && !string.IsNullOrWhiteSpace(settings.GeminiModel)
+                    && settings.GeminiModel != TranslationService.DefaultGeminiModel)
+                {
+                    settings.AiApiUrl = $"https://generativelanguage.googleapis.com/v1beta/models/{settings.GeminiModel}:generateContent";
+                }
+                if (settings.TranslateProvider is TranslationProvider.Gemini or TranslationProvider.DeepSeek)
+                    settings.TranslateProvider = TranslationProvider.Ai;
+                settings.AiConfigMigrated = true;
+                settingsCol.Upsert(settings);
+            }
+
             if (string.IsNullOrEmpty(settings.MasterPinHash))
             {
                 string pin = string.IsNullOrWhiteSpace(settings.MasterPin) ? AppSettings.DefaultPin : settings.MasterPin.Trim();
