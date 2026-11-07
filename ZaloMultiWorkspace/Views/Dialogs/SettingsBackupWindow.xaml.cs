@@ -68,6 +68,15 @@ namespace ZaloMultiWorkspace.Views.Dialogs
                 combo.SelectedItem = langs.FirstOrDefault(l => l.Code == code) ?? langs[0];
             }
 
+            // Tab Thông tin: phiên bản và ngày build lấy từ chính file đang chạy
+            var asm = System.Reflection.Assembly.GetExecutingAssembly();
+            string version = asm.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.0.0";
+            string? buildDate = asm.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), false)
+                .OfType<System.Reflection.AssemblyMetadataAttribute>()
+                .FirstOrDefault(a => a.Key == "BuildDate")?.Value;
+            AboutLogo.Source = LoadLargestIconFrame();
+            VersionText.Text = string.IsNullOrEmpty(buildDate) ? $"Phiên bản {version}" : $"Phiên bản {version} · build {buildDate}";
+
             // Tab Bảo mật
             DefaultPinWarningText.Visibility = _settings.IsUsingDefaultPin ? Visibility.Visible : Visibility.Collapsed;
             IdleMinutesTextBox.Text = _settings.AutoLockIdleMinutes.ToString();
@@ -212,6 +221,8 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             PanelSecurity.Visibility = TabSecurity.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             PanelBackup.Visibility = TabBackup.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             PanelTranslate.Visibility = TabTranslate.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            PanelAbout.Visibility = TabAbout.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            TabContentScroller.ScrollToTop(); // đổi tab thì về đầu nội dung
         }
 
         private void DndModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -409,6 +420,67 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             {
                 _mainViewModel.SetAccountLayout(mode);
             }
+        }
+
+        /// <summary>
+        /// Lấy khung ảnh lớn nhất trong app.ico (256px) để logo nét khi hiển thị 56px.
+        /// Mặc định WPF có thể chọn khung nhỏ rồi phóng to nên bị mờ.
+        /// </summary>
+        private static System.Windows.Media.ImageSource? LoadLargestIconFrame()
+        {
+            try
+            {
+                var info = Application.GetResourceStream(new Uri("pack://application:,,,/Assets/app.ico"));
+                using var stream = info.Stream;
+                var decoder = new System.Windows.Media.Imaging.IconBitmapDecoder(stream,
+                    System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat,
+                    System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+                var best = decoder.Frames.OrderByDescending(f => f.PixelWidth).First();
+                best.Freeze();
+                return best;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private void CopyAbout_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.Tag is string text)
+            {
+                try
+                {
+                    Clipboard.SetText(text);
+                    AboutStatusText.Text = $"✓ Đã sao chép {text}";
+                }
+                catch
+                {
+                    AboutStatusText.Text = "Không sao chép được, thử lại.";
+                }
+            }
+        }
+
+        private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+            }
+            catch
+            {
+                AboutStatusText.Text = "Máy chưa có ứng dụng email mặc định. Bấm nút sao chép để lấy địa chỉ email.";
+            }
+            e.Handled = true;
+        }
+
+        private void OpenDataFolder_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Services.DatabaseService.BaseAppDir) { UseShellExecute = true });
+            }
+            catch { }
         }
 
         private void Cancel_Click(object sender, RoutedEventArgs e)

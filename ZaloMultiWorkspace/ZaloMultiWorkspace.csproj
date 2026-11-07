@@ -7,6 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <AssemblyName>ChatWorkspacePro</AssemblyName>
+    <Version>1.0.0</Version>
+    <Authors>Nguyễn Duy Nhất</Authors>
+    <Copyright>© 2026 Nguyễn Duy Nhất</Copyright>
     <Product>Chat Workspace Pro</Product>
     <AssemblyTitle>Chat Workspace Pro</AssemblyTitle>
     <RootNamespace>ZaloMultiWorkspace</RootNamespace>
@@ -15,6 +18,11 @@
 
   <ItemGroup>
     <Resource Include="Assets\app.ico" />
+  </ItemGroup>
+
+  <!-- Ngày build ghi vào ứng dụng để hiện ở Cài đặt > Thông tin -->
+  <ItemGroup>
+    <AssemblyMetadata Include="BuildDate" Value="$([System.DateTime]::Now.ToString('dd/MM/yyyy'))" />
   </ItemGroup>
 
   <ItemGroup>
