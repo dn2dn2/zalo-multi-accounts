@@ -26,6 +26,7 @@ namespace ZaloMultiWorkspace.Views.Dialogs
 
             // Tab Chung
             MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTrayOnClose;
+            TrayHintSwitch.IsChecked = _settings.ShowTrayHintOnClose;
 
             // Tab Thông báo
             ToastPopupSwitch.IsChecked = _settings.ShowToastPopup;
@@ -177,6 +178,7 @@ namespace ZaloMultiWorkspace.Views.Dialogs
 
             // --- Chung ---
             _settings.MinimizeToTrayOnClose = MinimizeToTrayCheckBox.IsChecked == true;
+            _settings.ShowTrayHintOnClose = TrayHintSwitch.IsChecked == true;
 
             // --- Thông báo ---
             _settings.ShowToastPopup = ToastPopupSwitch.IsChecked == true;

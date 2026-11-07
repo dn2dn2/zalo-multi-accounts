@@ -394,10 +394,14 @@ namespace ZaloMultiWorkspace.Views
             {
                 e.Cancel = true;
                 Hide();
-                TrayIcon.ShowBalloonTip(
-                    "Zalo Multi-Workspace Pro",
-                    "Ứng dụng vẫn chạy ở khay hệ thống. Nhấp đúp vào biểu tượng để mở lại.",
-                    BalloonIcon.Info);
+                // Có thể tắt trong Cài đặt > Chung > "Báo khi ẩn xuống khay"
+                if (settings.ShowTrayHintOnClose)
+                {
+                    TrayIcon.ShowBalloonTip(
+                        "Zalo Multi-Workspace Pro",
+                        "Ứng dụng vẫn chạy ở khay hệ thống. Nhấp đúp vào biểu tượng để mở lại.",
+                        BalloonIcon.Info);
+                }
             }
             else
             {

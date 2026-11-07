@@ -46,6 +46,9 @@ namespace ZaloMultiWorkspace.Models
         public int AutoLockIdleMinutes { get; set; } = 15;
         public bool MinimizeToTrayOnClose { get; set; } = true;
 
+        /// <summary>Hiện thông báo "Ứng dụng vẫn chạy ở khay hệ thống" mỗi lần ẩn xuống khay (mặc định tắt)</summary>
+        public bool ShowTrayHintOnClose { get; set; } = false;
+
         // --- Thông báo (mặc định giữ nguyên hành vi trước đây) ---
         /// <summary>Popup góc màn hình (balloon/toast của Windows)</summary>
         public bool ShowToastPopup { get; set; } = true;

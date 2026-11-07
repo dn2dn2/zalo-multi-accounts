@@ -121,8 +121,8 @@
             </Border>
 
             <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-                <Button Content="Đóng" Width="90" Height="34" Margin="0,0,10,0" Click="Cancel_Click"/>
-                <Button Content="Lưu" Width="125" Height="34" Click="Save_Click"
+                <Button Content="Đóng" Width="110" Height="34" Margin="0,0,10,0" Click="Cancel_Click"/>
+                <Button Content="Lưu" Width="110" Height="34" Click="Save_Click"
                         Style="{StaticResource PrimaryButtonStyle}"/>
             </StackPanel>
 
@@ -146,7 +146,7 @@
                     </Border>
 
                     <TextBlock Text="CỬA SỔ" Style="{StaticResource SectionTitle}"/>
-                    <Border Style="{StaticResource SettingRow}" BorderThickness="0">
+                    <Border Style="{StaticResource SettingRow}">
                         <DockPanel>
                             <CheckBox x:Name="MinimizeToTrayCheckBox" DockPanel.Dock="Right" Style="{StaticResource SwitchStyle}" VerticalAlignment="Center"
                                       AutomationProperties.Name="Thu nhỏ xuống khay khi bấm X"/>
@@ -154,6 +154,18 @@
                             <StackPanel>
                                 <TextBlock Text="Thu nhỏ xuống khay khi bấm ✕" Style="{StaticResource RowTitle}"/>
                                 <TextBlock Text="Ứng dụng tiếp tục chạy ngầm để nhận tin nhắn" Style="{StaticResource RowHint}"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                    <Border Style="{StaticResource SettingRow}" BorderThickness="0" Padding="30,9,0,9"
+                            IsEnabled="{Binding IsChecked, ElementName=MinimizeToTrayCheckBox}">
+                        <DockPanel>
+                            <CheckBox x:Name="TrayHintSwitch" DockPanel.Dock="Right" Style="{StaticResource SwitchStyle}" VerticalAlignment="Center"
+                                      AutomationProperties.Name="Báo khi ẩn xuống khay"/>
+                            <TextBlock Text="&#xEA8F;" Style="{StaticResource RowIcon}"/>
+                            <StackPanel>
+                                <TextBlock Text="Báo khi ẩn xuống khay" Style="{StaticResource RowTitle}"/>
+                                <TextBlock Text="Hiện thông báo nhắc ứng dụng vẫn đang chạy" Style="{StaticResource RowHint}"/>
                             </StackPanel>
                         </DockPanel>
                     </Border>
