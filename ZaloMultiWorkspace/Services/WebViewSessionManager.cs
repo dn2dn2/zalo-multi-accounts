@@ -310,7 +310,7 @@ namespace ZaloMultiWorkspace.Services
                                 if (titleCount > oldCount)
                                 {
                                     RaiseGenericNewMessage(profile, profile.DisplayName,
-                                        $"Có {titleCount} tin nhắn chưa đọc trên Zalo");
+                                        $"Có {titleCount} tin nhắn chưa đọc trên {profile.PlatformName}");
                                 }
                             }
                         });
@@ -319,7 +319,7 @@ namespace ZaloMultiWorkspace.Services
                 };
 
                 // Giai đoạn 3: Tiêm kịch bản theo dõi tự động (MutationObserver đọc <title>, Avatar, Shortcut)
-                string observerScript = _jsBridgeService.BuildStartupObserverScript();
+                string observerScript = _jsBridgeService.BuildStartupObserverScript(profile.Platform);
                 await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(observerScript);
 
                 webView.CoreWebView2.WebMessageReceived += (sender, args) =>
@@ -327,7 +327,7 @@ namespace ZaloMultiWorkspace.Services
                     HandleWebMessage(profile, args.WebMessageAsJson);
                 };
 
-                webView.CoreWebView2.Navigate("https://chat.zalo.me");
+                webView.CoreWebView2.Navigate(profile.PlatformUrl);
 
                 profile.IsHibernated = false;
                 profile.ConnectionStatus = AccountConnectionStatus.Online;
@@ -342,7 +342,7 @@ namespace ZaloMultiWorkspace.Services
             catch (Exception ex)
             {
                 profile.ConnectionStatus = AccountConnectionStatus.ProxyError;
-                profile.StatusMessage = $"Không mở được Zalo: {ex.Message}";
+                profile.StatusMessage = $"Không mở được {profile.PlatformName}: {ex.Message}";
                 OnSessionStateChanged?.Invoke();
                 return false;
             }
@@ -404,7 +404,7 @@ namespace ZaloMultiWorkspace.Services
                             OnNewMessageNotification?.Invoke(
                                 profile,
                                 !string.IsNullOrWhiteSpace(msg.Sender) ? msg.Sender : profile.DisplayName,
-                                !string.IsNullOrWhiteSpace(msg.Body) ? msg.Body : "Bạn có tin nhắn Zalo mới");
+                                !string.IsNullOrWhiteSpace(msg.Body) ? msg.Body : $"Bạn có tin nhắn {profile.PlatformName} mới");
                             break;
 
                         case "AVATAR_UPDATE":

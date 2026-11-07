@@ -112,7 +112,7 @@ namespace ZaloMultiWorkspace.ViewModels
         private int _totalUnreadCount = 0;
 
         [ObservableProperty]
-        private string _trayTooltipText = "Zalo Multi-Workspace Pro";
+        private string _trayTooltipText = "Chat Workspace Pro";
 
         // --- Bố cục danh sách tài khoản (tab ngang / thanh dọc) ---
         [ObservableProperty]
@@ -558,7 +558,7 @@ namespace ZaloMultiWorkspace.ViewModels
 
             if (webView != null)
             {
-                await JsBridgeService.InsertQuickReplyAsync(webView, template.Content, template.ImagePath, sendImmediately: false);
+                await JsBridgeService.InsertQuickReplyAsync(webView, SelectedAccount.Platform, template.Content, template.ImagePath, sendImmediately: false);
             }
         }
 
@@ -577,7 +577,7 @@ namespace ZaloMultiWorkspace.ViewModels
 
             if (webView != null)
             {
-                await JsBridgeService.InsertQuickReplyAsync(webView, template.Content, template.ImagePath, sendImmediately: true);
+                await JsBridgeService.InsertQuickReplyAsync(webView, SelectedAccount.Platform, template.Content, template.ImagePath, sendImmediately: true);
             }
         }
 
@@ -603,7 +603,7 @@ namespace ZaloMultiWorkspace.ViewModels
             {
                 Id = Guid.NewGuid(),
                 AccountId = SelectedAccount.Id,
-                CustomerName = string.IsNullOrWhiteSpace(NewNoteCustomerName) ? "Khách hàng Zalo" : NewNoteCustomerName.Trim(),
+                CustomerName = string.IsNullOrWhiteSpace(NewNoteCustomerName) ? "Khách hàng" : NewNoteCustomerName.Trim(),
                 CustomerPhoneOrTag = NewNotePhoneOrTag?.Trim() ?? string.Empty,
                 NoteContent = NewNoteContent.Trim(),
                 UpdatedAt = DateTime.Now
@@ -718,13 +718,13 @@ namespace ZaloMultiWorkspace.ViewModels
                 if (settings.HideMessageContent)
                 {
                     OnTrayBalloonNotificationRequested?.Invoke(
-                        $"Zalo [{profile.DisplayName}]",
+                        $"{profile.PlatformName} [{profile.DisplayName}]",
                         "Bạn có tin nhắn mới");
                 }
                 else
                 {
                     OnTrayBalloonNotificationRequested?.Invoke(
-                        $"Zalo [{profile.DisplayName}] - {senderName}",
+                        $"{profile.PlatformName} [{profile.DisplayName}] - {senderName}",
                         bodyText);
                 }
             }
@@ -764,6 +764,7 @@ namespace ZaloMultiWorkspace.ViewModels
                 {
                     await JsBridgeService.InsertQuickReplyAsync(
                         wv,
+                        profile.Platform,
                         matched.Content,
                         matched.ImagePath,
                         sendImmediately: false,
@@ -871,7 +872,7 @@ namespace ZaloMultiWorkspace.ViewModels
         /// </summary>
         private string BuildTrayTooltip(int totalUnread)
         {
-            const string appName = "Zalo Multi-Workspace Pro";
+            const string appName = "Chat Workspace Pro";
             const int maxLength = 127;
             if (totalUnread <= 0)
                 return $"{appName}\nKhông có tin chưa đọc";

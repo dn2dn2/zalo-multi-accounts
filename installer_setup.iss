@@ -1,8 +1,8 @@
-; Kịch bản đóng gói Inno Setup - Zalo Multi-Workspace Pro (Giai đoạn 5)
-#define MyAppName "Zalo Multi-Workspace Pro"
+; Kịch bản đóng gói Inno Setup - Chat Workspace Pro
+#define MyAppName "Chat Workspace Pro"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "ZaloMultiWorkspace"
-#define MyAppExeName "ZaloMultiWorkspace.exe"
+#define MyAppPublisher "ChatWorkspacePro"
+#define MyAppExeName "ChatWorkspacePro.exe"
 
 [Setup]
 AppId={{8F9B3B45-2C8A-4D7E-9A1F-6B5C8E4D2A10}

@@ -11,7 +11,7 @@ namespace ZaloMultiWorkspace.Services
     public static class SecurityHelper
     {
         private const string ProtectedPrefix = "dpapi:";
-        private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("ZaloMultiWorkspace.v1");
+        private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("ZaloMultiWorkspace.v1"); // Không đổi: mật khẩu proxy đã lưu sẽ không giải mã được
 
         public static string Protect(string? plainText)
         {

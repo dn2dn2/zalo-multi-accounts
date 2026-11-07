@@ -19,12 +19,13 @@ namespace ZaloMultiWorkspace.Services
     {
         public async Task<ProxyHealthResult> CheckProxyAsync(ZaloAccountProfile profile, CancellationToken cancellationToken = default)
         {
-            // Nếu không cấu hình Proxy thì đo ping trực tiếp tới chat.zalo.me
+            // Nếu không cấu hình Proxy thì đo ping trực tiếp tới trang của nền tảng (Zalo / Telegram)
             if (!profile.HasProxy)
             {
-                return await MeasureDirectPingAsync(cancellationToken);
+                return await MeasureDirectPingAsync(profile.PlatformUrl, cancellationToken);
             }
 
+            string targetUrl = profile.PlatformUrl;
             string host = profile.ProxyHost;
             int port = profile.ProxyPort;
             string type = string.IsNullOrWhiteSpace(profile.ProxyType) ? "http" : profile.ProxyType.ToLowerInvariant();
@@ -72,7 +73,7 @@ namespace ZaloMultiWorkspace.Services
                 };
 
                 var sw = Stopwatch.StartNew();
-                using var request = new HttpRequestMessage(HttpMethod.Head, "https://chat.zalo.me");
+                using var request = new HttpRequestMessage(HttpMethod.Head, targetUrl);
                 using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 sw.Stop();
 
@@ -93,7 +94,7 @@ namespace ZaloMultiWorkspace.Services
             }
         }
 
-        private async Task<ProxyHealthResult> MeasureDirectPingAsync(CancellationToken cancellationToken)
+        private async Task<ProxyHealthResult> MeasureDirectPingAsync(string targetUrl, CancellationToken cancellationToken)
         {
             try
             {
@@ -102,7 +103,7 @@ namespace ZaloMultiWorkspace.Services
                     Timeout = TimeSpan.FromSeconds(5)
                 };
                 var sw = Stopwatch.StartNew();
-                using var request = new HttpRequestMessage(HttpMethod.Head, "https://chat.zalo.me");
+                using var request = new HttpRequestMessage(HttpMethod.Head, targetUrl);
                 using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 sw.Stop();
 
@@ -118,7 +119,7 @@ namespace ZaloMultiWorkspace.Services
                 {
                     IsHealthy = false,
                     PingMs = -1,
-                    ErrorMessage = $"Lỗi mạng khi truy cập Zalo Web: {ex.Message}"
+                    ErrorMessage = $"Lỗi mạng khi truy cập {targetUrl}: {ex.Message}"
                 };
             }
         }

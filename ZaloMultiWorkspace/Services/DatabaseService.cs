@@ -11,7 +11,7 @@ namespace ZaloMultiWorkspace.Services
     {
         public static string BaseAppDir => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ZaloMultiWorkspace");
+            "ZaloMultiWorkspace"); // Giữ tên thư mục cũ để dùng tiếp dữ liệu (tài khoản, đăng nhập) đã có
 
         public static string BaseProfileDir => Path.Combine(BaseAppDir, "Profiles");
 

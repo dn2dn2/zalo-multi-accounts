@@ -51,6 +51,24 @@ namespace ZaloMultiWorkspace.ViewModels
 
         public Action<bool>? CloseAction { get; set; }
 
+        /// <summary>Nền tảng chỉ chọn được khi thêm mới; dữ liệu đăng nhập không chuyển được giữa các nền tảng</summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsZaloSelected))]
+        [NotifyPropertyChangedFor(nameof(IsTelegramSelected))]
+        private ChatPlatform _platform = ChatPlatform.Zalo;
+
+        public bool IsZaloSelected => Platform == ChatPlatform.Zalo;
+        public bool IsTelegramSelected => Platform == ChatPlatform.Telegram;
+        public bool CanChangePlatform => !IsEditMode;
+
+        [RelayCommand]
+        private void SelectPlatform(string? platform)
+        {
+            if (IsEditMode || !Enum.TryParse(platform, out ChatPlatform p))
+                return;
+            Platform = p;
+        }
+
         public AddAccountViewModel(ProxyHealthService proxyHealthService, ZaloAccountProfile? existingProfile = null)
         {
             _proxyHealthService = proxyHealthService;
@@ -65,6 +83,7 @@ namespace ZaloMultiWorkspace.ViewModels
                 Profile = new ZaloAccountProfile();
             }
 
+            _platform = Profile.Platform;
             _displayName = Profile.DisplayName;
             _tagCategory = Profile.TagCategory;
             _tagColor = string.IsNullOrWhiteSpace(Profile.TagColor) ? "#1E3A8A" : Profile.TagColor;
@@ -78,7 +97,11 @@ namespace ZaloMultiWorkspace.ViewModels
 
         private void ApplyToProfile(ZaloAccountProfile target)
         {
-            target.DisplayName = string.IsNullOrWhiteSpace(DisplayName) ? "Tài khoản Zalo" : DisplayName.Trim();
+            if (!IsEditMode)
+                target.Platform = Platform;
+            target.DisplayName = string.IsNullOrWhiteSpace(DisplayName)
+                ? (Platform == ChatPlatform.Telegram ? "Tài khoản Telegram" : "Tài khoản Zalo")
+                : DisplayName.Trim();
             target.TagCategory = string.IsNullOrWhiteSpace(TagCategory) ? "CSKH" : TagCategory.Trim();
             target.TagColor = string.IsNullOrWhiteSpace(TagColor) ? "#1E3A8A" : TagColor.Trim();
             target.ProxyType = string.IsNullOrWhiteSpace(ProxyType) ? "http" : ProxyType.Trim().ToLowerInvariant();

@@ -8,6 +8,13 @@ using LiteDB;
 
 namespace ZaloMultiWorkspace.Models
 {
+    /// <summary>Nền tảng chat của tài khoản (quyết định trang web mở và bộ chọn DOM)</summary>
+    public enum ChatPlatform
+    {
+        Zalo = 0,
+        Telegram = 1
+    }
+
     public enum AccountConnectionStatus
     {
         Online,
@@ -24,6 +31,34 @@ namespace ZaloMultiWorkspace.Models
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(Initials))]
         private string _displayName = "Tài khoản mới";
+
+        /// <summary>Tài khoản cũ (chưa có trường này trong DB) mặc định là Zalo</summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(PlatformName))]
+        [NotifyPropertyChangedFor(nameof(PlatformUrl))]
+        [NotifyPropertyChangedFor(nameof(PlatformColor))]
+        [NotifyPropertyChangedFor(nameof(PlatformGlyph))]
+        [NotifyPropertyChangedFor(nameof(IsTelegram))]
+        private ChatPlatform _platform = ChatPlatform.Zalo;
+
+        [BsonIgnore]
+        public string PlatformName => Platform == ChatPlatform.Telegram ? "Telegram" : "Zalo";
+
+        [BsonIgnore]
+        public string PlatformUrl => Platform == ChatPlatform.Telegram
+            ? "https://web.telegram.org/a/"
+            : "https://chat.zalo.me";
+
+        /// <summary>Màu huy hiệu nền tảng</summary>
+        [BsonIgnore]
+        public string PlatformColor => Platform == ChatPlatform.Telegram ? "#229ED9" : "#0068FF";
+
+        /// <summary>Ký hiệu trên huy hiệu: "Z" cho Zalo, máy bay giấy (Segoe "Send") cho Telegram</summary>
+        [BsonIgnore]
+        public string PlatformGlyph => Platform == ChatPlatform.Telegram ? "\uE724" : "Z";
+
+        [BsonIgnore]
+        public bool IsTelegram => Platform == ChatPlatform.Telegram;
 
         [ObservableProperty]
         private string _tagCategory = "CSKH";

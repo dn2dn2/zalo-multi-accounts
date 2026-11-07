@@ -69,8 +69,8 @@ namespace ZaloMultiWorkspace.Views
             TaskbarItemInfo ??= new System.Windows.Shell.TaskbarItemInfo();
             TaskbarItemInfo.Overlay = count > 0 ? CreateBadgeImage(count) : null;
             TaskbarItemInfo.Description = count > 0
-                ? $"Zalo Multi-Workspace Pro — {count} tin chưa đọc"
-                : "Zalo Multi-Workspace Pro";
+                ? $"Chat Workspace Pro — {count} tin chưa đọc"
+                : "Chat Workspace Pro";
         }
 
         private static System.Windows.Media.ImageSource CreateBadgeImage(int count)
@@ -365,7 +365,7 @@ namespace ZaloMultiWorkspace.Views
                 {
                     var confirm = MessageBox.Show(
                         this,
-                        $"Xóa tài khoản '{profile.DisplayName}'? Thông tin đăng nhập Zalo của tài khoản này trên máy cũng sẽ bị xóa.",
+                        $"Xóa tài khoản '{profile.DisplayName}'? Thông tin đăng nhập {profile.PlatformName} của tài khoản này trên máy cũng sẽ bị xóa.",
                         "Xác nhận xóa tài khoản",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Warning);
@@ -408,7 +408,7 @@ namespace ZaloMultiWorkspace.Views
                 if (settings.ShowTrayHintOnClose)
                 {
                     TrayIcon.ShowBalloonTip(
-                        "Zalo Multi-Workspace Pro",
+                        "Chat Workspace Pro",
                         "Ứng dụng vẫn chạy ở khay hệ thống. Nhấp đúp vào biểu tượng để mở lại.",
                         BalloonIcon.Info);
                 }

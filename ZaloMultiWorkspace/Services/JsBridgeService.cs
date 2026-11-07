@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using ZaloMultiWorkspace.Models;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -9,14 +11,56 @@ using Microsoft.Web.WebView2.Wpf;
 
 namespace ZaloMultiWorkspace.Services
 {
-    public class ZaloDomSelectors
+    /// <summary>
+    /// Bộ chọn DOM cho một nền tảng chat. Đọc từ selectors.json (mục "Zalo" / "Telegram")
+    /// để sửa được khi trang web đổi giao diện mà không cần build lại.
+    /// </summary>
+    public class PlatformSelectors
     {
-        public string ChatInputSelector { get; set; } = "#richInput, div[contenteditable='true'][id*='input'], div[contenteditable='true']";
-        public string SendButtonSelector { get; set; } = "[data-translate-title='STR_SEND'], .send-msg-btn, div[title='Gửi'], i.fa-Sent-msg_24_Line";
-        public string AvatarSelector { get; set; } = "#main-tab img, nav img, [data-id='div_Main_Tab'] img, .zavatar img, .rel.zavatar-container img";
-        public string ActiveChatTitleSelector { get; set; } = "header .header-title, .thread-chat-title, #header .title";
-        public string UnreadBadgeSelector { get; set; } = "#main-tab .z-noti-badge, nav .z-noti-badge, [class*='noti-badge'], [class*='unread-count'], .fa-num5";
-        public string TitleElementSelector { get; set; } = "title";
+        public string ChatInputSelector { get; set; } = string.Empty;
+        public string SendButtonSelector { get; set; } = string.Empty;
+        public string AvatarSelector { get; set; } = string.Empty;
+        public string AvatarBackgroundSelector { get; set; } = string.Empty;
+        public string ActiveChatTitleSelector { get; set; } = string.Empty;
+        /// <summary>Badge tổng trên thanh điều hướng (Zalo); để trống nếu nền tảng không có</summary>
+        public string UnreadBadgeSelector { get; set; } = string.Empty;
+        /// <summary>Chỉ nhận badge điều hướng nằm trong khoảng x &lt; giá trị này (0 = không giới hạn)</summary>
+        public int NavBadgeMaxLeft { get; set; }
+        public string ConversationUnreadBadgeSelector { get; set; } = string.Empty;
+        public string ConversationItemSelector { get; set; } = string.Empty;
+        public string ConversationItemBadgeSelector { get; set; } = string.Empty;
+        public string ConversationNameSelector { get; set; } = string.Empty;
+        public string ConversationPreviewSelector { get; set; } = string.Empty;
+
+        public static PlatformSelectors DefaultZalo() => new()
+        {
+            ChatInputSelector = "#richInput, div[contenteditable='true'][id*='input'], div[contenteditable='true']",
+            SendButtonSelector = "[data-translate-title='STR_SEND'], .send-msg-btn, div[title='Gửi'], i.fa-Sent-msg_24_Line",
+            AvatarSelector = "#main-tab img, nav img, [data-id='div_Main_Tab'] img, .zavatar img, .rel.zavatar-container img",
+            AvatarBackgroundSelector = "#main-tab .zavatar, nav .zavatar, .zavatar",
+            ActiveChatTitleSelector = "header .header-title, .thread-chat-title, #header .title",
+            UnreadBadgeSelector = "#main-tab .z-noti-badge, nav .z-noti-badge, [class*='noti-badge'], [class*='unread-count'], .fa-num5",
+            NavBadgeMaxLeft = 90,
+            ConversationUnreadBadgeSelector = ".conv-item .z-noti-badge, .conv-item [class*='noti-badge'], .conv-item .fa-num5",
+            ConversationItemSelector = ".conv-item, [id*='friend-item'], .msg-item",
+            ConversationItemBadgeSelector = ".z-noti-badge, [class*='noti-badge'], .fa-num5",
+            ConversationNameSelector = ".conv-item-title__name, .truncate, [class*='title']",
+            ConversationPreviewSelector = ".conv-item-body__main, .conv-message, [class*='message']"
+        };
+
+        /// <summary>Telegram Web A (web.telegram.org/a), kèm bộ chọn dự phòng cho bản K</summary>
+        public static PlatformSelectors DefaultTelegram() => new()
+        {
+            ChatInputSelector = "#editable-message-text, .input-message-input[contenteditable='true'], div[contenteditable='true'].form-control",
+            SendButtonSelector = ".Button.send, button.send, .btn-send",
+            ActiveChatTitleSelector = ".MiddleHeader .ChatInfo .fullName, .MiddleHeader .title h3, .chat-info .peer-title",
+            NavBadgeMaxLeft = 0,
+            ConversationUnreadBadgeSelector = ".ListItem.Chat .ChatBadge.unread:not(.muted), .chatlist-chat .dialog-subtitle-badge-unread:not(.is-muted)",
+            ConversationItemSelector = ".ListItem.Chat, .chatlist-chat",
+            ConversationItemBadgeSelector = ".ChatBadge.unread, .dialog-subtitle-badge-unread",
+            ConversationNameSelector = ".fullName, .title h3, .peer-title",
+            ConversationPreviewSelector = ".last-message, .subtitle, .dialog-subtitle"
+        };
     }
 
     public class JsBridgeMessage
@@ -32,7 +76,14 @@ namespace ZaloMultiWorkspace.Services
 
     public class JsBridgeService
     {
-        private ZaloDomSelectors _selectors = new();
+        private readonly Dictionary<ChatPlatform, PlatformSelectors> _selectors = new()
+        {
+            [ChatPlatform.Zalo] = PlatformSelectors.DefaultZalo(),
+            [ChatPlatform.Telegram] = PlatformSelectors.DefaultTelegram()
+        };
+
+        public PlatformSelectors GetSelectors(ChatPlatform platform) =>
+            _selectors.TryGetValue(platform, out var sel) ? sel : _selectors[ChatPlatform.Zalo];
 
         public JsBridgeService()
         {
@@ -44,12 +95,29 @@ namespace ZaloMultiWorkspace.Services
             try
             {
                 string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "selectors.json");
-                if (File.Exists(path))
+                if (!File.Exists(path))
+                    return;
+
+                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                var root = doc.RootElement;
+
+                // Định dạng cũ (chỉ Zalo, khóa nằm ngay ở gốc)
+                if (root.TryGetProperty("ChatInputSelector", out _))
                 {
-                    string json = File.ReadAllText(path);
-                    var loaded = JsonSerializer.Deserialize<ZaloDomSelectors>(json);
-                    if (loaded != null)
-                        _selectors = loaded;
+                    var legacy = root.Deserialize<PlatformSelectors>();
+                    if (legacy != null)
+                        _selectors[ChatPlatform.Zalo] = MergeWithDefaults(legacy, PlatformSelectors.DefaultZalo());
+                    return;
+                }
+
+                foreach (ChatPlatform platform in Enum.GetValues(typeof(ChatPlatform)))
+                {
+                    if (root.TryGetProperty(platform.ToString(), out var section))
+                    {
+                        var loaded = section.Deserialize<PlatformSelectors>();
+                        if (loaded != null)
+                            _selectors[platform] = MergeWithDefaults(loaded, GetSelectors(platform));
+                    }
                 }
             }
             catch
@@ -58,12 +126,28 @@ namespace ZaloMultiWorkspace.Services
             }
         }
 
-        public string BuildStartupObserverScript()
+        /// <summary>Trường nào trong file bị thiếu thì dùng giá trị mặc định</summary>
+        private static PlatformSelectors MergeWithDefaults(PlatformSelectors loaded, PlatformSelectors defaults)
         {
-            string chatSelectorJson = JsonSerializer.Serialize(_selectors.ChatInputSelector);
-            string avatarSelectorJson = JsonSerializer.Serialize(_selectors.AvatarSelector);
-            string activeChatSelectorJson = JsonSerializer.Serialize(_selectors.ActiveChatTitleSelector);
-            string unreadBadgeSelectorJson = JsonSerializer.Serialize(_selectors.UnreadBadgeSelector);
+            foreach (var prop in typeof(PlatformSelectors).GetProperties())
+            {
+                if (prop.PropertyType == typeof(string) && string.IsNullOrWhiteSpace((string?)prop.GetValue(loaded)))
+                {
+                    // Chuỗi rỗng có chủ đích (vd Telegram không có avatar) vẫn hợp lệ nếu mặc định cũng rỗng
+                    prop.SetValue(loaded, prop.GetValue(defaults));
+                }
+            }
+            return loaded;
+        }
+
+        public string BuildStartupObserverScript(ChatPlatform platform)
+        {
+            var sel = GetSelectors(platform);
+            string J(string v) => JsonSerializer.Serialize(v ?? string.Empty);
+            string chatSelectorJson = J(sel.ChatInputSelector);
+            string avatarSelectorJson = J(sel.AvatarSelector);
+            string activeChatSelectorJson = J(sel.ActiveChatTitleSelector);
+            string unreadBadgeSelectorJson = J(sel.UnreadBadgeSelector);
 
             return $@"
 (function() {{
@@ -71,6 +155,23 @@ namespace ZaloMultiWorkspace.Services
     const AVATAR_SEL = {avatarSelectorJson};
     const ACTIVE_CHAT_SEL = {activeChatSelectorJson};
     const UNREAD_BADGE_SEL = {unreadBadgeSelectorJson};
+    const AVATAR_BG_SEL = {J(sel.AvatarBackgroundSelector)};
+    const NAV_BADGE_MAX_LEFT = {sel.NavBadgeMaxLeft};
+    const CONV_BADGE_SEL = {J(sel.ConversationUnreadBadgeSelector)};
+    const CONV_ITEM_SEL = {J(sel.ConversationItemSelector)};
+    const CONV_ITEM_BADGE_SEL = {J(sel.ConversationItemBadgeSelector)};
+    const CONV_NAME_SEL = {J(sel.ConversationNameSelector)};
+    const CONV_MSG_SEL = {J(sel.ConversationPreviewSelector)};
+
+    // querySelectorAll an toàn: bộ chọn rỗng hoặc sai cú pháp trả về danh sách rỗng
+    function qsa(root, sel) {{
+        if (!sel) return [];
+        try {{ return root.querySelectorAll(sel); }} catch (e) {{ return []; }}
+    }}
+    function qs(root, sel) {{
+        if (!sel) return null;
+        try {{ return root.querySelector(sel); }} catch (e) {{ return null; }}
+    }}
 
     let lastUnreadSent = -1;
 
@@ -120,14 +221,14 @@ namespace ZaloMultiWorkspace.Services
         let countFromDom = 0;
         try {{
             // Kiểm tra badge trên biểu tượng Tin nhắn ở thanh điều hướng bên trái (#main-tab)
-            const navBadges = document.querySelectorAll(UNREAD_BADGE_SEL);
+            const navBadges = qsa(document, UNREAD_BADGE_SEL);
             for (const b of navBadges) {{
                 if (!isBadgeVisible(b)) continue;
                 const rect = b.getBoundingClientRect();
                 const txt = (b.innerText || b.textContent || '').replace('+', '').trim();
                 const num = parseInt(txt, 10);
                 if (!isNaN(num) && num > 0) {{
-                    if (rect.left >= 0 && rect.left < 90 && rect.top >= 40 && rect.top < 170) {{
+                    if (NAV_BADGE_MAX_LEFT <= 0 || (rect.left >= 0 && rect.left < NAV_BADGE_MAX_LEFT && rect.top >= 40 && rect.top < 170)) {{
                         countFromDom = Math.max(countFromDom, num);
                     }}
                 }}
@@ -136,7 +237,7 @@ namespace ZaloMultiWorkspace.Services
             // Nếu không tìm thấy số trên thanh trái, cộng các badge số hoặc chấm đỏ đang hiển thị trong danh sách hội thoại
             if (countFromDom === 0) {{
                 let sumConv = 0;
-                const convBadges = document.querySelectorAll('.conv-item .z-noti-badge, .conv-item [class*=""noti-badge""], .conv-item .fa-num5');
+                const convBadges = qsa(document, CONV_BADGE_SEL);
                 for (const b of convBadges) {{
                     if (!isBadgeVisible(b)) continue;
                     const txt = (b.innerText || b.textContent || '').replace('+', '').trim();
@@ -152,12 +253,12 @@ namespace ZaloMultiWorkspace.Services
 
     function extractLatestUnreadPreview() {{
         try {{
-            const convItems = document.querySelectorAll('.conv-item, [id*=""friend-item""], .msg-item');
+            const convItems = qsa(document, CONV_ITEM_SEL);
             for (const item of convItems) {{
-                const badge = item.querySelector('.z-noti-badge, [class*=""noti-badge""], .fa-num5');
+                const badge = qs(item, CONV_ITEM_BADGE_SEL);
                 if (badge && isBadgeVisible(badge)) {{
-                    const nameEl = item.querySelector('.conv-item-title__name, .truncate, [class*=""title""]');
-                    const msgEl = item.querySelector('.conv-item-body__main, .conv-message, [class*=""message""]');
+                    const nameEl = qs(item, CONV_NAME_SEL);
+                    const msgEl = qs(item, CONV_MSG_SEL);
                     const sender = nameEl ? (nameEl.innerText || '').trim() : '';
                     const body = msgEl ? (msgEl.innerText || '').trim() : '';
                     if (sender || body) {{
@@ -199,7 +300,7 @@ namespace ZaloMultiWorkspace.Services
     let lastActiveChatSent = '';
 
     function findMyAvatarUrl() {{
-        const imgs = document.querySelectorAll(AVATAR_SEL);
+        const imgs = qsa(document, AVATAR_SEL);
         for (const img of imgs) {{
             const rect = img.getBoundingClientRect();
             if (rect.width >= 24 && rect.left >= 0 && rect.left < 90 && rect.top >= 0 && rect.top < 180) {{
@@ -208,7 +309,7 @@ namespace ZaloMultiWorkspace.Services
                 }}
             }}
         }}
-        const bgEls = document.querySelectorAll('#main-tab .zavatar, nav .zavatar, .zavatar');
+        const bgEls = qsa(document, AVATAR_BG_SEL);
         for (const el of bgEls) {{
             const rect = el.getBoundingClientRect();
             if (rect.width >= 24 && rect.left >= 0 && rect.left < 90 && rect.top >= 0 && rect.top < 180) {{
@@ -252,7 +353,7 @@ namespace ZaloMultiWorkspace.Services
                     tempImg.src = rawUrl;
                 }}
             }}
-            const chatEl = document.querySelector(ACTIVE_CHAT_SEL);
+            const chatEl = qs(document, ACTIVE_CHAT_SEL);
             const chatName = (chatEl && chatEl.innerText) ? chatEl.innerText.trim() : '';
             // Chỉ gửi khi người dùng chuyển sang cuộc hội thoại khác
             if (chatName && chatName !== lastActiveChatSent) {{
@@ -284,7 +385,7 @@ namespace ZaloMultiWorkspace.Services
         notifyActivity();
         // Bắt phím Space hoặc Tab sau khi gõ cú pháp tắt /shortcut trong ô chat
         if (e.key === ' ' || e.key === 'Tab') {{
-            const inputEl = document.querySelector(CHAT_INPUT_SEL);
+            const inputEl = qs(document, CHAT_INPUT_SEL);
             if (inputEl && document.activeElement === inputEl) {{
                 const text = (inputEl.innerText || inputEl.textContent || '').trim();
                 if (text.startsWith('/') && text.length > 1 && !text.includes(' ')) {{
@@ -323,7 +424,7 @@ namespace ZaloMultiWorkspace.Services
             keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
         }
 
-        public async Task InsertQuickReplyAsync(WebView2 webView, string text, string? imagePath, bool sendImmediately, bool replaceAll = false)
+        public async Task InsertQuickReplyAsync(WebView2 webView, ChatPlatform platform, string text, string? imagePath, bool sendImmediately, bool replaceAll = false)
         {
             if (webView?.CoreWebView2 == null)
                 return;
@@ -343,7 +444,7 @@ namespace ZaloMultiWorkspace.Services
                     webView.Focus();
                     string focusScript = $@"
 (function() {{
-    const el = document.querySelector({JsonSerializer.Serialize(_selectors.ChatInputSelector)});
+    const el = document.querySelector({JsonSerializer.Serialize(GetSelectors(platform).ChatInputSelector)});
     if (el) el.focus();
 }})();";
                     await webView.CoreWebView2.ExecuteScriptAsync(focusScript);
@@ -359,8 +460,8 @@ namespace ZaloMultiWorkspace.Services
 
             // 2. Bơm văn bản vào #richInput của Zalo Web
             string escapedText = JsonSerializer.Serialize(text);
-            string chatInputSel = JsonSerializer.Serialize(_selectors.ChatInputSelector);
-            string sendBtnSel = JsonSerializer.Serialize(_selectors.SendButtonSelector);
+            string chatInputSel = JsonSerializer.Serialize(GetSelectors(platform).ChatInputSelector);
+            string sendBtnSel = JsonSerializer.Serialize(GetSelectors(platform).SendButtonSelector);
             string replaceFlag = replaceAll ? "true" : "false";
             string sendFlag = sendImmediately ? "true" : "false";
 

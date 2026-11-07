@@ -6,7 +6,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <AssemblyName>ZaloMultiWorkspace</AssemblyName>
+    <AssemblyName>ChatWorkspacePro</AssemblyName>
+    <Product>Chat Workspace Pro</Product>
+    <AssemblyTitle>Chat Workspace Pro</AssemblyTitle>
     <RootNamespace>ZaloMultiWorkspace</RootNamespace>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>

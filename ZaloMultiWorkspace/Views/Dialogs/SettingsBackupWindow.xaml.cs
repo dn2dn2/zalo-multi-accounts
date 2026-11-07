@@ -92,9 +92,9 @@ namespace ZaloMultiWorkspace.Views.Dialogs
         {
             var dlg = new SaveFileDialog
             {
-                Title = "Chọn nơi lưu gói Sao lưu Zalo Multi-Workspace (.zip)",
+                Title = "Chọn nơi lưu gói Sao lưu Chat Workspace Pro (.zip)",
                 Filter = "Zip Archive (*.zip)|*.zip",
-                FileName = $"ZaloMultiWorkspace_Backup_{DateTime.Now:yyyyMMdd_HHmm}.zip"
+                FileName = $"ChatWorkspacePro_Backup_{DateTime.Now:yyyyMMdd_HHmm}.zip"
             };
 
             if (dlg.ShowDialog() == true)
@@ -126,7 +126,7 @@ namespace ZaloMultiWorkspace.Views.Dialogs
         {
             var dlg = new OpenFileDialog
             {
-                Title = "Chọn file Sao lưu Zalo Multi-Workspace (.zip)",
+                Title = "Chọn file Sao lưu Chat Workspace Pro (.zip)",
                 Filter = "Zip Archive (*.zip)|*.zip"
             };
 

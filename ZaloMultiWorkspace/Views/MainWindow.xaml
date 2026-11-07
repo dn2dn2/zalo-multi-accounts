@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:tb="http://www.hardcodet.net/taskbar"
         xmlns:models="clr-namespace:ZaloMultiWorkspace.Models"
-        Title="Zalo Multi-Workspace Pro" Height="760" Width="1280"
+        Title="Chat Workspace Pro" Height="760" Width="1280"
         MinHeight="600" MinWidth="960"
         WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Assets/app.ico"
@@ -166,6 +166,7 @@
         <ToolTip x:Key="AccountToolTip" x:Shared="False" Background="{DynamicResource Brush.Bg.Panel}" Foreground="{DynamicResource Brush.Text.Primary}" BorderBrush="{DynamicResource Brush.Border.Subtle}">
             <StackPanel>
                 <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="12"/>
+                <TextBlock Text="{Binding PlatformName}" Foreground="{DynamicResource Brush.Text.Secondary}" FontSize="11"/>
                 <TextBlock Text="{Binding TagCategory}" Foreground="{DynamicResource Brush.Accent.TextSoft}" FontSize="11"/>
                 <TextBlock Text="{Binding ProxyDisplayText}" Foreground="{DynamicResource Brush.Text.Secondary}" FontSize="11"/>
                 <TextBlock Text="🔕 Đã tắt thông báo" Foreground="{DynamicResource Brush.Warning.Text}" FontSize="11"
@@ -182,6 +183,22 @@
             <Separator Background="{DynamicResource Brush.Border.Subtle}"/>
             <MenuItem Header="Xóa tài khoản" Foreground="{DynamicResource Brush.Danger.Text}" Click="ContextDeleteAccount_Click" CommandParameter="{Binding}"/>
         </ContextMenu>
+
+
+        <!-- Ký hiệu nền tảng trên huy hiệu: "Z" (chữ) hoặc máy bay giấy (font icon) -->
+        <Style x:Key="PlatformGlyphStyle" TargetType="TextBlock">
+            <Setter Property="Text" Value="{Binding PlatformGlyph}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsTelegram}" Value="True">
+                    <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>
+                    <Setter Property="FontWeight" Value="Normal"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
 
         <!-- ===== Tab tài khoản (bố cục ngang) ===== -->
         <Style x:Key="AccountTabStyle" TargetType="Border">
@@ -234,7 +251,7 @@
         <!-- System Tray Icon (Giai đoạn 5) -->
         <tb:TaskbarIcon x:Name="TrayIcon"
                         IconSource="pack://application:,,,/Assets/app.ico"
-                        ToolTipText="Zalo Multi-Workspace Pro"
+                        ToolTipText="Chat Workspace Pro"
                         TrayMouseDoubleClick="TrayIcon_TrayMouseDoubleClick">
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu Background="{DynamicResource Brush.Bg.Panel}" Foreground="{DynamicResource Brush.Text.Primary}" BorderBrush="{DynamicResource Brush.Border.Subtle}">
@@ -283,6 +300,11 @@
                                                         <ImageBrush ImageSource="{Binding AvatarImageSource}" Stretch="UniformToFill"/>
                                                     </Ellipse.Fill>
                                                 </Ellipse>
+                                                <Border Width="11" Height="11" CornerRadius="6" Margin="0,0,-4,-3"
+                                                        HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                        Background="{Binding PlatformColor}" BorderBrush="{DynamicResource Brush.Bg.App}" BorderThickness="1.5">
+                                                    <TextBlock Style="{StaticResource PlatformGlyphStyle}" FontSize="5.5"/>
+                                                </Border>
                                                 <Grid.Style>
                                                     <Style TargetType="Grid">
                                                         <Style.Triggers>
@@ -346,7 +368,7 @@
                 <DockPanel LastChildFill="True">
                     <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,14" HorizontalAlignment="Center">
                         <Separator Background="{DynamicResource Brush.Border.Subtle}" Margin="10,0,10,12"/>
-                        <Button Width="44" Height="44" Margin="0,0,0,10" ToolTip="Thêm tài khoản Zalo mới"
+                        <Button Width="44" Height="44" Margin="0,0,0,10" ToolTip="Thêm tài khoản"
                                 Click="AddAccount_Click"
                                 Style="{StaticResource ToolbarButtonStyle}" Background="{DynamicResource Brush.Bg.Control}" BorderBrush="#0068FF">
                             <TextBlock Text="+" FontSize="22" FontWeight="Bold" Foreground="#0068FF" Margin="0,-2,0,0"/>
@@ -422,6 +444,12 @@
                                             </Grid>
                                         </Border>
 
+                                        <!-- Huy hiệu nền tảng (Zalo / Telegram) -->
+                                        <Border Width="16" Height="16" CornerRadius="8" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="9,3,0,0"
+                                                Background="{Binding PlatformColor}" BorderBrush="{DynamicResource Brush.Bg.App}" BorderThickness="2">
+                                            <TextBlock Style="{StaticResource PlatformGlyphStyle}" FontSize="7"/>
+                                        </Border>
+
                                         <!-- Badge đỏ số tin nhắn chưa đọc -->
                                         <Border Background="#EF4444" CornerRadius="9" MinWidth="18" Height="18" Padding="4,0"
                                                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,8,0"
@@ -484,6 +512,9 @@
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="{Binding SelectedAccount.DisplayName, FallbackValue='Chưa chọn tài khoản'}"
                                        FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <Border Background="{Binding SelectedAccount.PlatformColor, FallbackValue=#0068FF}" CornerRadius="4" Padding="6,2" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SelectedAccount.PlatformName, FallbackValue=''}" FontSize="11" Foreground="White"/>
+                            </Border>
                             <Border Background="{DynamicResource Brush.Accent.SoftBg}" CornerRadius="4" Padding="6,2" Margin="0,0,12,0" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding SelectedAccount.TagCategory, FallbackValue=''}" FontSize="11" Foreground="{DynamicResource Brush.Accent.TextSoft}"/>
                             </Border>
@@ -563,7 +594,7 @@
                                     AutomationProperties.Name="Tải lại">
                                 <Button.ToolTip>
                                     <StackPanel>
-                                        <TextBlock Text="Tải lại trang Zalo" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Tải lại trang" FontWeight="SemiBold"/>
                                         <TextBlock Text="F5" Foreground="{DynamicResource Brush.Text.Muted}"/>
                                     </StackPanel>
                                 </Button.ToolTip>
@@ -645,7 +676,7 @@
                             </Border>
                             <TextBlock Text="{Binding SelectedAccount.DisplayName, StringFormat='{}{0}'}" 
                                        FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                            <TextBlock Text="Tài khoản chưa mở. Bấm Khởi chạy để vào Zalo." 
+                            <TextBlock Text="{Binding SelectedAccount.PlatformName, StringFormat='Tài khoản chưa mở. Bấm Khởi chạy để vào {0}.'}" 
                                        FontSize="13" Foreground="{DynamicResource Brush.Text.Secondary}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,10"/>
                             <TextBlock Text="{Binding SelectedAccount.StatusMessage}" 
                                        FontSize="12" Foreground="{DynamicResource Brush.Warning.Text}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,20"/>
