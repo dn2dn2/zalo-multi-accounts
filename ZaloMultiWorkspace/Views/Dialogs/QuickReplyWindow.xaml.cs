@@ -27,7 +27,7 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             {
                 Title = "Sửa tin nhắn mẫu";
                 HeaderText.Text = "SỬA TIN NHẮN MẪU";
-                SaveButton.Content = "💾 Lưu thay đổi";
+                SaveButton.Content = "Lưu thay đổi";
             }
             else
             {

@@ -355,8 +355,8 @@ namespace ZaloMultiWorkspace.Views
                 {
                     var confirm = MessageBox.Show(
                         this,
-                        $"Bạn có chắc chắn muốn xóa tài khoản '{profile.DisplayName}' và toàn bộ dữ liệu phiên đăng nhập của tài khoản này?",
-                        "Xác nhận xóa Profile",
+                        $"Xóa tài khoản '{profile.DisplayName}'? Thông tin đăng nhập Zalo của tài khoản này trên máy cũng sẽ bị xóa.",
+                        "Xác nhận xóa tài khoản",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Warning);
 
@@ -396,7 +396,7 @@ namespace ZaloMultiWorkspace.Views
                 Hide();
                 TrayIcon.ShowBalloonTip(
                     "Zalo Multi-Workspace Pro",
-                    "Ứng dụng đang chạy ngầm dưới khay hệ thống. Nhấp đúp vào biểu tượng để mở lại.",
+                    "Ứng dụng vẫn chạy ở khay hệ thống. Nhấp đúp vào biểu tượng để mở lại.",
                     BalloonIcon.Info);
             }
             else

@@ -176,11 +176,11 @@
                         TrayMouseDoubleClick="TrayIcon_TrayMouseDoubleClick">
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu Background="{DynamicResource Brush.Bg.Panel}" Foreground="{DynamicResource Brush.Text.Primary}" BorderBrush="{DynamicResource Brush.Border.Subtle}">
-                    <MenuItem Header="🗔 Mở Zalo Multi-Workspace Pro" Click="TrayOpen_Click"/>
-                    <MenuItem Header="🔒 Khóa màn hình ngay (Master Lock)" Click="TrayLock_Click"/>
-                    <MenuItem Header="💤 Ngủ đông tất cả tài khoản" Click="TrayHibernateAll_Click"/>
+                    <MenuItem Header="Mở ứng dụng" Click="TrayOpen_Click"/>
+                    <MenuItem Header="Khóa ngay" Click="TrayLock_Click"/>
+                    <MenuItem Header="Tạm dừng tất cả" Click="TrayHibernateAll_Click"/>
                     <Separator Background="{DynamicResource Brush.Border.Subtle}"/>
-                    <MenuItem Header="❌ Thoát hoàn toàn" Click="TrayExit_Click"/>
+                    <MenuItem Header="Thoát" Click="TrayExit_Click"/>
                 </ContextMenu>
             </tb:TaskbarIcon.ContextMenu>
         </tb:TaskbarIcon>
@@ -232,13 +232,13 @@
                                         <Grid.ContextMenu>
                                             <ContextMenu Background="{DynamicResource Brush.Bg.Panel}" Foreground="{DynamicResource Brush.Text.Primary}" BorderBrush="{DynamicResource Brush.Border.Subtle}"
                                                          PlacementTarget="{Binding RelativeSource={RelativeSource AncestorType=Grid}}">
-                                                <MenuItem Header="⚡ Khởi chạy / Đánh thức" Click="ContextWakeAccount_Click" CommandParameter="{Binding}"/>
-                                                <MenuItem Header="💤 Ngủ đông tài khoản này" Click="ContextHibernateAccount_Click" CommandParameter="{Binding}"/>
-                                                <MenuItem Header="✏️ Cấu hình Profile &amp; Proxy" Click="ContextEditAccount_Click" CommandParameter="{Binding}"/>
-                                                <MenuItem Header="📂 Mở thư mục Profile" Click="ContextOpenFolder_Click" CommandParameter="{Binding}"/>
+                                                <MenuItem Header="Khởi chạy" Click="ContextWakeAccount_Click" CommandParameter="{Binding}"/>
+                                                <MenuItem Header="Tạm dừng" Click="ContextHibernateAccount_Click" CommandParameter="{Binding}"/>
+                                                <MenuItem Header="Cấu hình tài khoản" Click="ContextEditAccount_Click" CommandParameter="{Binding}"/>
+                                                <MenuItem Header="Mở thư mục dữ liệu" Click="ContextOpenFolder_Click" CommandParameter="{Binding}"/>
                                                 <MenuItem Header="{Binding MuteMenuHeader}" Click="ContextToggleMute_Click" CommandParameter="{Binding}"/>
                                                 <Separator Background="{DynamicResource Brush.Border.Subtle}"/>
-                                                <MenuItem Header="🗑️ Xóa tài khoản" Foreground="{DynamicResource Brush.Danger.Text}" Click="ContextDeleteAccount_Click" CommandParameter="{Binding}"/>
+                                                <MenuItem Header="Xóa tài khoản" Foreground="{DynamicResource Brush.Danger.Text}" Click="ContextDeleteAccount_Click" CommandParameter="{Binding}"/>
                                             </ContextMenu>
                                         </Grid.ContextMenu>
 
@@ -356,7 +356,7 @@
                             <TextBlock Text="{Binding SelectedAccount.DisplayName, FallbackValue='Chưa chọn tài khoản'}"
                                        FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,10,0"/>
                             <Border Background="{DynamicResource Brush.Accent.SoftBg}" CornerRadius="4" Padding="6,2" Margin="0,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding SelectedAccount.TagCategory, FallbackValue='Workspace'}" FontSize="11" Foreground="{DynamicResource Brush.Accent.TextSoft}"/>
+                                <TextBlock Text="{Binding SelectedAccount.TagCategory, FallbackValue=''}" FontSize="11" Foreground="{DynamicResource Brush.Accent.TextSoft}"/>
                             </Border>
                             <!-- Chip mạng: "Ping 42ms", chi tiết Proxy/Direct IP nằm trong tooltip -->
                             <Border BorderThickness="1" CornerRadius="4" Padding="8,3" VerticalAlignment="Center"
@@ -440,16 +440,16 @@
                                 </Button.ToolTip>
                             </Button>
                             <Button Content="&#xE769;" Command="{Binding HibernateCurrentAccountCommand}" Style="{StaticResource IconButtonStyle}"
-                                    AutomationProperties.Name="Ngủ đông">
+                                    AutomationProperties.Name="Tạm dừng">
                                 <Button.ToolTip>
                                     <StackPanel>
-                                        <TextBlock Text="Ngủ đông tài khoản" FontWeight="SemiBold"/>
-                                        <TextBlock Text="Giải phóng RAM, giữ đăng nhập" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                                        <TextBlock Text="Tạm dừng tài khoản" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Giải phóng bộ nhớ, vẫn giữ đăng nhập" Foreground="{DynamicResource Brush.Text.Muted}"/>
                                     </StackPanel>
                                 </Button.ToolTip>
                             </Button>
                             <Button Content="&#xE8B7;" Command="{Binding OpenProfileFolderCommand}" Style="{StaticResource IconButtonStyle}"
-                                    AutomationProperties.Name="Mở thư mục Profile" ToolTip="Mở thư mục Profile"/>
+                                    AutomationProperties.Name="Mở thư mục dữ liệu" ToolTip="Mở thư mục dữ liệu"/>
                             <Border Width="1" Height="20" Background="{DynamicResource Brush.Border.Subtle}" Margin="6,0" VerticalAlignment="Center"/>
                             <!-- Chuyển giao diện: Theo Windows -> Sáng -> Tối -->
                             <Button Content="{Binding ThemeGlyph}" Command="{Binding CycleThemeCommand}" Style="{StaticResource IconButtonStyle}"
@@ -471,11 +471,11 @@
                                 </Button.ToolTip>
                             </Button>
                             <Button Content="&#xE90D;" Command="{Binding ToggleRightDrawerCommand}" Style="{StaticResource DrawerToggleIconButtonStyle}"
-                                    AutomationProperties.Name="Ẩn hoặc hiện Trợ lý CSKH">
+                                    AutomationProperties.Name="Ẩn hoặc hiện bảng Tin mẫu và Ghi chú">
                                 <Button.ToolTip>
                                     <StackPanel>
-                                        <TextBlock Text="Ẩn/hiện Trợ lý CSKH" FontWeight="SemiBold"/>
-                                        <TextBlock Text="Tin mẫu và Ghi chú KH" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                                        <TextBlock Text="Ẩn/hiện bảng Tin mẫu và Ghi chú" FontWeight="SemiBold"/>
+                                        
                                     </StackPanel>
                                 </Button.ToolTip>
                             </Button>
@@ -511,17 +511,17 @@
                             <Border Width="64" Height="64" CornerRadius="32" Background="{DynamicResource Brush.Bg.Control}" HorizontalAlignment="Center" Margin="0,0,0,16">
                                 <TextBlock Text="💬" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
-                            <TextBlock Text="{Binding SelectedAccount.DisplayName, StringFormat='Phiên làm việc: {0}'}" 
+                            <TextBlock Text="{Binding SelectedAccount.DisplayName, StringFormat='{}{0}'}" 
                                        FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                            <TextBlock Text="Mỗi tài khoản Zalo được khởi tạo một đối tượng WebView2 riêng với đường dẫn UserDataFolder độc lập nằm trong vùng chứa này." 
+                            <TextBlock Text="Tài khoản chưa mở. Bấm Khởi chạy để vào Zalo." 
                                        FontSize="13" Foreground="{DynamicResource Brush.Text.Secondary}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,10"/>
                             <TextBlock Text="{Binding SelectedAccount.StatusMessage}" 
                                        FontSize="12" Foreground="{DynamicResource Brush.Warning.Text}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,20"/>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <Button Content="⚡ Khởi chạy / Đánh thức tài khoản" Width="240" Height="38"
+                                <Button Content="Khởi chạy" Width="120" Height="38"
                                         Command="{Binding StartOrWakeSelectedAccountCommand}"
                                         Style="{StaticResource PrimaryButtonStyle}"/>
-                                <Button Content="✏️ Cấu hình Proxy" Width="130" Height="38" Margin="8,0,0,0"
+                                <Button Content="Cấu hình" Width="120" Height="38" Margin="8,0,0,0"
                                         Click="EditSelectedAccountProxy_Click"
                                         Style="{StaticResource ToolbarButtonStyle}"/>
                             </StackPanel>
@@ -542,9 +542,9 @@
                     <Border DockPanel.Dock="Top" Height="46" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="0,0,0,1" Padding="10,0">
                         <Grid VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button Content="⚡ Tin mẫu" Command="{Binding SwitchToQuickReplyTabCommand}"
+                                <Button Content="Tin mẫu" Command="{Binding SwitchToQuickReplyTabCommand}"
                                         Style="{StaticResource ToolbarButtonStyle}" Padding="8,4" FontSize="11"/>
-                                <Button Content="📝 Ghi chú KH" Command="{Binding SwitchToCustomerNotesTabCommand}"
+                                <Button Content="Ghi chú" Command="{Binding SwitchToCustomerNotesTabCommand}"
                                         Style="{StaticResource ToolbarButtonStyle}" Padding="8,4" FontSize="11"/>
                             </StackPanel>
                             <Button Content="+ Thêm" HorizontalAlignment="Right" Click="AddQuickReply_Click"
@@ -555,17 +555,59 @@
 
                     <!-- TAB 1: TIN NHẮN MẪU (QUICK REPLIES) -->
                     <DockPanel Visibility="{Binding IsQuickReplyTabActive, Converter={StaticResource BoolToVis}}">
-                        <Border DockPanel.Dock="Top" Padding="12,12,12,8">
-                            <Border Background="{DynamicResource Brush.Bg.Control}" BorderBrush="{DynamicResource Brush.Border.Control}" BorderThickness="1" CornerRadius="5" Padding="8,4">
+                        <StackPanel DockPanel.Dock="Top" Margin="12,12,12,8">
+                            <!-- Ô tìm kiếm gọn: 1 lớp viền, cao 32px, chữ gợi ý, nút xóa, Esc để xóa -->
+                            <Border Height="32" CornerRadius="8" BorderThickness="1" Padding="9,0,4,0"
+                                    Background="{DynamicResource Brush.Bg.Control}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Control}"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Text.Disabled}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                                <Setter Property="BorderBrush" Value="#0068FF"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
                                 <DockPanel>
-                                    <TextBlock Text="🔍" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <TextBox Text="{Binding QuickReplySearchQuery, UpdateSourceTrigger=PropertyChanged}"
-                                             Background="Transparent" Foreground="{DynamicResource Brush.Text.Primary}" BorderThickness="0" CaretBrush="{DynamicResource Brush.Text.Primary}"
-                                             FontSize="12" VerticalContentAlignment="Center"
-                                             ToolTip="Tìm nhanh theo phím tắt (VD: /baogia, /chao, /stk)"/>
+                                    <TextBlock Text="&#xE721;" FontFamily="{StaticResource IconFont}" FontSize="13"
+                                               Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" Margin="0,1,8,0"/>
+                                    <Button DockPanel.Dock="Right" Content="&#xE711;" Style="{StaticResource CardIconButtonStyle}"
+                                            Width="22" Height="22" FontSize="10"
+                                            Command="{Binding ClearQuickReplySearchCommand}"
+                                            Visibility="{Binding HasQuickReplySearch, Converter={StaticResource BoolToVis}}"
+                                            ToolTip="Xóa tìm kiếm (Esc)" AutomationProperties.Name="Xóa tìm kiếm"/>
+                                    <Grid>
+                                        <TextBlock Text="Tìm tin mẫu: /chao, báo giá…" FontSize="12" IsHitTestVisible="False"
+                                                   Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasQuickReplySearch}" Value="False">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBox Text="{Binding QuickReplySearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                                 Background="Transparent" BorderThickness="0" Padding="0"
+                                                 FontSize="12" VerticalAlignment="Center"
+                                                 AutomationProperties.Name="Tìm tin mẫu">
+                                            <TextBox.InputBindings>
+                                                <KeyBinding Key="Escape" Command="{Binding ClearQuickReplySearchCommand}"/>
+                                            </TextBox.InputBindings>
+                                        </TextBox>
+                                    </Grid>
                                 </DockPanel>
                             </Border>
-                        </Border>
+                            <TextBlock Text="{Binding QuickReplyFilterSummary}" FontSize="11" Foreground="{DynamicResource Brush.Text.Muted}"
+                                       Margin="2,6,0,0" Visibility="{Binding HasQuickReplySearch, Converter={StaticResource BoolToVis}}"/>
+                        </StackPanel>
 
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,4,12,12">
                             <ItemsControl ItemsSource="{Binding FilteredQuickReplies}">
@@ -591,14 +633,14 @@
                                                 </DockPanel>
                                                 <TextBlock Text="{Binding Content}"
                                                            FontSize="12" Foreground="{DynamicResource Brush.Text.Tertiary}" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                                                <TextBlock Text="🖼️ Có đính kèm ảnh" FontSize="11" Foreground="{DynamicResource Brush.Accent.Text}" Margin="0,0,0,8"
+                                                <TextBlock Text="Kèm ảnh" FontSize="11" Foreground="{DynamicResource Brush.Accent.Text}" Margin="0,0,0,8"
                                                            Visibility="{Binding HasImage, Converter={StaticResource BoolToVis}}"/>
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                                    <Button Content="Chèn vào ô chat"
+                                                    <Button Content="Chèn"
                                                             Command="{Binding DataContext.InsertQuickReplyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                             CommandParameter="{Binding}"
                                                             Style="{StaticResource ToolbarButtonStyle}" FontSize="11" Padding="8,3"/>
-                                                    <Button Content="Gửi ngay ➔"
+                                                    <Button Content="Gửi"
                                                             Command="{Binding DataContext.SendQuickReplyNowCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                             CommandParameter="{Binding}"
                                                             Style="{StaticResource PrimaryButtonStyle}" FontSize="11" Padding="8,3" Margin="4,0"/>
@@ -617,7 +659,7 @@
                             <StackPanel>
                                 <TextBlock Text="{Binding ActiveChatNotesSummary}" FontSize="11" Foreground="{DynamicResource Brush.Success.TextSoft}" Margin="0,0,0,6"
                                            TextWrapping="Wrap" Visibility="{Binding HasActiveChat, Converter={StaticResource BoolToVis}}"/>
-                                <TextBlock Text="Thêm ghi chú khách hàng (Mini-CRM):" FontSize="11" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,6"/>
+                                <TextBlock Text="Thêm ghi chú khách hàng" FontSize="11" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,6"/>
                                 <TextBox Text="{Binding NewNoteCustomerName, UpdateSourceTrigger=PropertyChanged}"
                                          Background="{DynamicResource Brush.Bg.Control}" Foreground="{DynamicResource Brush.Text.Primary}" BorderBrush="{DynamicResource Brush.Border.Control}" Padding="6,4" Margin="0,0,0,6"
                                          ToolTip="Tên khách hàng / Hội thoại"/>
@@ -625,7 +667,7 @@
                                          Background="{DynamicResource Brush.Bg.Control}" Foreground="{DynamicResource Brush.Text.Primary}" BorderBrush="{DynamicResource Brush.Border.Control}" Padding="6,4" Height="54"
                                          TextWrapping="Wrap" AcceptsReturn="True" Margin="0,0,0,8"
                                          ToolTip="Nội dung ghi chú công nợ, lịch hẹn, báo giá..."/>
-                                <Button Content="💾 Lưu ghi chú KH" Command="{Binding SaveCustomerNoteCommand}"
+                                <Button Content="Lưu ghi chú" Command="{Binding SaveCustomerNoteCommand}"
                                         Style="{StaticResource PrimaryButtonStyle}" FontSize="11" Padding="10,5" HorizontalAlignment="Right"/>
                             </StackPanel>
                         </Border>
@@ -718,8 +760,8 @@
                     <Border Width="54" Height="54" CornerRadius="27" Background="{DynamicResource Brush.Bg.Control}" HorizontalAlignment="Center" Margin="0,0,0,12">
                         <TextBlock Text="🔒" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
-                    <TextBlock Text="Zalo Multi-Workspace Đã Khóa" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,6"/>
-                    <TextBlock Text="Nhập mã PIN bảo mật (Mặc định: 1234) để tiếp tục phiên làm việc."
+                    <TextBlock Text="Ứng dụng đang khóa" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                    <TextBlock Text="Nhập mã PIN để mở khóa."
                                FontSize="12" Foreground="{DynamicResource Brush.Text.Secondary}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,16"/>
 
                     <TextBox x:Name="PinLockInputBox"
@@ -731,7 +773,7 @@
                     <TextBlock Text="{Binding LockErrorMessage}" Foreground="{DynamicResource Brush.Danger.Text}" FontSize="11"
                                HorizontalAlignment="Center" Margin="0,0,0,10"/>
 
-                    <Button Content="🔓 Mở khóa Workspace" Height="38"
+                    <Button Content="Mở khóa" Height="38"
                             Command="{Binding UnlockWorkspaceCommand}"
                             Style="{StaticResource PrimaryButtonStyle}"/>
                 </StackPanel>

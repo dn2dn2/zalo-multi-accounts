@@ -37,7 +37,20 @@ namespace ZaloMultiWorkspace.ViewModels
         private ZaloAccountProfile? _selectedAccount;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasQuickReplySearch))]
         private string _quickReplySearchQuery = string.Empty;
+
+        public bool HasQuickReplySearch => !string.IsNullOrWhiteSpace(QuickReplySearchQuery);
+
+        /// <summary>"2 / 3 tin mẫu" khi đang lọc</summary>
+        [ObservableProperty]
+        private string _quickReplyFilterSummary = string.Empty;
+
+        [RelayCommand]
+        private void ClearQuickReplySearch()
+        {
+            QuickReplySearchQuery = string.Empty;
+        }
 
         [ObservableProperty]
         private bool _isRightDrawerOpen = true;
@@ -175,10 +188,10 @@ namespace ZaloMultiWorkspace.ViewModels
         private string _runningStatsText = "🟢 Đang chạy: 0/0 tài khoản";
 
         [ObservableProperty]
-        private string _hibernatedStatsText = "💤 Ngủ đông: 0";
+        private string _hibernatedStatsText = "Đang tạm dừng: 0 tài khoản";
 
         [ObservableProperty]
-        private string _totalRamUsageText = "⚡ RAM tiến trình WebView2: ~0 MB";
+        private string _totalRamUsageText = "Bộ nhớ đang dùng: ~0 MB";
 
         [ObservableProperty]
         private string _autoLockStatusText = "🔒 Tự động khóa: Bật";
@@ -268,7 +281,7 @@ namespace ZaloMultiWorkspace.ViewModels
             {
                 acc.IsHibernated = true;
                 acc.ConnectionStatus = AccountConnectionStatus.Hibernated;
-                acc.StatusMessage = "Nhấn [⚡ Khởi chạy Phiên Zalo] để mở tài khoản.";
+                acc.StatusMessage = string.Empty;
                 Accounts.Add(acc);
             }
 
@@ -342,6 +355,10 @@ namespace ZaloMultiWorkspace.ViewModels
                     FilteredQuickReplies.Add(item);
                 }
             }
+
+            QuickReplyFilterSummary = string.IsNullOrEmpty(q)
+                ? string.Empty
+                : $"{FilteredQuickReplies.Count} / {AllQuickReplies.Count} tin mẫu";
         }
 
         private void LoadCustomerNotesForAccount(Guid accountId)
@@ -607,7 +624,7 @@ namespace ZaloMultiWorkspace.ViewModels
             }
             else
             {
-                LockErrorMessage = "❌ Mã PIN không chính xác. Vui lòng thử lại!";
+                LockErrorMessage = "Mã PIN không đúng.";
             }
         }
 
@@ -886,8 +903,8 @@ namespace ZaloMultiWorkspace.ViewModels
 
             TotalUnreadText = $"Tổng tin chưa đọc: {totalUnread}";
             RunningStatsText = $"Đang chạy: {runningCount}/{totalAccounts} tài khoản";
-            HibernatedStatsText = $"Ngủ đông: {hibernatedCount} tài khoản";
-            TotalRamUsageText = $"RAM các tiến trình WebView2: ~{totalRamMb:0} MB";
+            HibernatedStatsText = $"Đang tạm dừng: {hibernatedCount} tài khoản";
+            TotalRamUsageText = $"Bộ nhớ đang dùng: ~{totalRamMb:0} MB";
             AutoLockStatusText = settings.IsAutoLockEnabled
                 ? $"Tự động khóa sau {settings.AutoLockIdleMinutes} phút không thao tác — nhấn để cấu hình"
                 : "Tự động khóa: Tắt — nhấn để cấu hình";

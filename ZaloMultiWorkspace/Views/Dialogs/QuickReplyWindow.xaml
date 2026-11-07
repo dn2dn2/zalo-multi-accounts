@@ -9,7 +9,7 @@
         <DockPanel LastChildFill="True">
             <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
                 <Button Content="Hủy" Width="90" Height="34" Margin="0,0,10,0" Click="Cancel_Click"/>
-                <Button x:Name="SaveButton" Content="💾 Lưu tin mẫu" Width="140" Height="34" Click="Save_Click"
+                <Button x:Name="SaveButton" Content="Lưu" Width="140" Height="34" Click="Save_Click"
                         Style="{StaticResource PrimaryButtonStyle}"/>
             </StackPanel>
 
@@ -23,11 +23,11 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="Phím tắt (VD: /baogia):" FontSize="12" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,4"/>
+                        <TextBlock Text="Phím tắt (vd: /baogia)" FontSize="12" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,4"/>
                         <TextBox x:Name="ShortcutTextBox"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
-                        <TextBlock Text="Tiêu đề gợi nhớ:" FontSize="12" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,4"/>
+                        <TextBlock Text="Tiêu đề" FontSize="12" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,4"/>
                         <TextBox x:Name="TitleTextBox"/>
                     </StackPanel>
                 </Grid>
@@ -35,14 +35,14 @@
                 <TextBlock x:Name="ErrorText" FontSize="11" Foreground="{DynamicResource Brush.Danger.Text}" TextWrapping="Wrap"
                            Margin="0,-4,0,8" Visibility="Collapsed"/>
 
-                <TextBlock Text="Nội dung văn bản (sẽ chèn vào #richInput của Zalo):" FontSize="12" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,4"/>
+                <TextBlock Text="Nội dung tin nhắn" FontSize="12" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,4"/>
                 <TextBox x:Name="ContentTextBox" Height="120" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12"/>
 
-                <TextBlock Text="Hình ảnh báo giá / kỹ thuật đính kèm (Tùy chọn):" FontSize="12" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,4"/>
+                <TextBlock Text="Ảnh đính kèm (không bắt buộc)" FontSize="12" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,4"/>
                 <DockPanel>
                     <Button x:Name="ClearImageButton" DockPanel.Dock="Right" Content="Bỏ ảnh" Padding="10,6" Margin="6,0,0,0"
                             Click="ClearImage_Click" ToolTip="Bỏ ảnh đính kèm khỏi tin mẫu"/>
-                    <Button DockPanel.Dock="Right" Content="📁 Chọn ảnh..." Padding="10,6" Margin="8,0,0,0" Click="BrowseImage_Click"/>
+                    <Button DockPanel.Dock="Right" Content="Chọn ảnh…" Padding="10,6" Margin="8,0,0,0" Click="BrowseImage_Click"/>
                     <TextBox x:Name="ImagePathTextBox" IsReadOnly="True"/>
                 </DockPanel>
             </StackPanel>

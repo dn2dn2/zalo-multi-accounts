@@ -98,8 +98,8 @@ namespace ZaloMultiWorkspace.Models
 
         [BsonIgnore]
         public string MuteMenuHeader => IsNotificationMuted
-            ? "🔔 Bật lại thông báo tài khoản này"
-            : "🔕 Tắt thông báo tài khoản này";
+            ? "Bật thông báo"
+            : "Tắt thông báo";
 
         public int SortOrder { get; set; } = 0;
 

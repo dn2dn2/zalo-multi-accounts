@@ -183,7 +183,7 @@ namespace ZaloMultiWorkspace.Services
             {
                 profile.ConnectionStatus = AccountConnectionStatus.ProxyError;
                 profile.IsHibernated = false;
-                profile.StatusMessage = "WebView2 không hỗ trợ Proxy SOCKS5 có User/Pass. Hãy dùng Proxy HTTP, " +
+                profile.StatusMessage = "Proxy SOCKS5 có tên đăng nhập/mật khẩu chưa được hỗ trợ. Hãy dùng proxy HTTP, " +
                                         "hoặc SOCKS5 xác thực bằng IP (whitelist) và xóa User/Pass.";
                 if (makeVisible)
                     HideAllWebViews();
@@ -192,7 +192,7 @@ namespace ZaloMultiWorkspace.Services
             }
 
             profile.ConnectionStatus = AccountConnectionStatus.Connecting;
-            profile.StatusMessage = "Đang kiểm tra kết nối mạng / Proxy...";
+            profile.StatusMessage = "Đang kết nối…";
             OnSessionStateChanged?.Invoke();
 
             // Giai đoạn 2: Kiểm tra Proxy trước khi mở WebView2
@@ -342,7 +342,7 @@ namespace ZaloMultiWorkspace.Services
             catch (Exception ex)
             {
                 profile.ConnectionStatus = AccountConnectionStatus.ProxyError;
-                profile.StatusMessage = $"Lỗi khởi tạo WebView2: {ex.Message}";
+                profile.StatusMessage = $"Không mở được Zalo: {ex.Message}";
                 OnSessionStateChanged?.Invoke();
                 return false;
             }
@@ -571,7 +571,7 @@ namespace ZaloMultiWorkspace.Services
             profile.ConnectionStatus = AccountConnectionStatus.Hibernated;
             profile.RamUsageMb = 0;
             profile.IsPingFailed = false;
-            profile.StatusMessage = "Tài khoản đang ở chế độ Ngủ đông để tiết kiệm RAM.";
+            profile.StatusMessage = "Tài khoản đang tạm dừng để tiết kiệm bộ nhớ.";
             OnSessionStateChanged?.Invoke();
         }
 

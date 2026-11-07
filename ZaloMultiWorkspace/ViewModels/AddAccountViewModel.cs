@@ -41,7 +41,7 @@ namespace ZaloMultiWorkspace.ViewModels
         private int _autoHibernateMinutes;
 
         [ObservableProperty]
-        private string _proxyTestStatus = "Chưa kiểm tra kết nối Proxy";
+        private string _proxyTestStatus = "Chưa kiểm tra kết nối";
 
         [ObservableProperty]
         private bool _isTestingProxy = false;
@@ -96,7 +96,7 @@ namespace ZaloMultiWorkspace.ViewModels
         private async Task TestProxyAsync()
         {
             IsTestingProxy = true;
-            ProxyTestStatus = "⏳ Đang kiểm tra kết nối Proxy và đo Ping...";
+            ProxyTestStatus = "⏳ Đang kiểm tra kết nối…";
 
             var tempProfile = new ZaloAccountProfile();
             ApplyToProfile(tempProfile);
@@ -104,7 +104,7 @@ namespace ZaloMultiWorkspace.ViewModels
             {
                 IsTestingProxy = false;
                 IsProxyTestSuccess = false;
-                ProxyTestStatus = "❌ WebView2 không hỗ trợ SOCKS5 có User/Pass. Hãy chọn http, hoặc dùng SOCKS5 xác thực theo IP và xóa User/Pass.";
+                ProxyTestStatus = "❌ Proxy SOCKS5 có tên đăng nhập/mật khẩu chưa được hỗ trợ. Hãy chọn http, hoặc xóa tên đăng nhập/mật khẩu nếu proxy xác thực theo IP.";
                 return;
             }
 
@@ -133,7 +133,7 @@ namespace ZaloMultiWorkspace.ViewModels
             if (check.IsUnsupportedSocks5Auth)
             {
                 IsProxyTestSuccess = false;
-                ProxyTestStatus = "❌ WebView2 không hỗ trợ SOCKS5 có User/Pass. Hãy chọn http, hoặc dùng SOCKS5 xác thực theo IP và xóa User/Pass.";
+                ProxyTestStatus = "❌ Proxy SOCKS5 có tên đăng nhập/mật khẩu chưa được hỗ trợ. Hãy chọn http, hoặc xóa tên đăng nhập/mật khẩu nếu proxy xác thực theo IP.";
                 return;
             }
 

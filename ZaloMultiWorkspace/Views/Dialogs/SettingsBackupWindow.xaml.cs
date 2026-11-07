@@ -101,18 +101,18 @@ namespace ZaloMultiWorkspace.Views.Dialogs
                 try
                 {
                     IsEnabled = false;
-                    BackupStatusText.Text = "⏳ Đang đưa các tài khoản về chế độ Ngủ đông và nén dữ liệu...";
+                    BackupStatusText.Text = "⏳ Đang tạm dừng các tài khoản và sao lưu...";
                     // Giai đoạn 5: Ngủ đông toàn bộ và chờ tiến trình WebView2 thoát hẳn để mở khóa file Cookie/IndexedDB
                     await _mainViewModel.SessionManager.HibernateAllSessionsAndWaitAsync(_mainViewModel.Accounts);
                     var result = await _mainViewModel.BackupRestoreService.BackupWorkspaceAsync(dlg.FileName);
                     _mainViewModel.RefreshStatusMetrics();
                     BackupStatusText.Text = result.SkippedFiles.Count == 0
-                        ? $"✅ Đã sao lưu {result.FileCount} file thành công tại: {dlg.FileName}"
-                        : $"⚠️ Đã sao lưu {result.FileCount} file tại: {dlg.FileName}. Bỏ qua {result.SkippedFiles.Count} file đang bị khóa (vd: {result.SkippedFiles[0]}).";
+                        ? $"✅ Đã sao lưu vào: {dlg.FileName}"
+                        : $"⚠️ Đã sao lưu vào: {dlg.FileName}. Có {result.SkippedFiles.Count} file đang được dùng nên bị bỏ qua.";
                 }
                 catch (Exception ex)
                 {
-                    BackupStatusText.Text = $"❌ Lỗi khi sao lưu: {ex.Message}";
+                    BackupStatusText.Text = $"❌ Không sao lưu được: {ex.Message}";
                 }
                 finally
                 {
@@ -134,16 +134,16 @@ namespace ZaloMultiWorkspace.Views.Dialogs
                 try
                 {
                     IsEnabled = false;
-                    BackupStatusText.Text = "⏳ Đang đóng các phiên hiện tại và giải nén khôi phục...";
+                    BackupStatusText.Text = "⏳ Đang tạm dừng các tài khoản và khôi phục...";
                     await _mainViewModel.SessionManager.HibernateAllSessionsAndWaitAsync(_mainViewModel.Accounts);
                     await _mainViewModel.BackupRestoreService.RestoreWorkspaceAsync(dlg.FileName);
                     _mainViewModel.DatabaseService.RunMigrations();
                     _mainViewModel.LoadInitialData();
-                    BackupStatusText.Text = "✅ Khôi phục dữ liệu hoàn tất! Danh sách tài khoản đã được cập nhật.";
+                    BackupStatusText.Text = "✅ Đã khôi phục. Danh sách tài khoản đã được cập nhật.";
                 }
                 catch (Exception ex)
                 {
-                    BackupStatusText.Text = $"❌ Lỗi khi khôi phục (dữ liệu cũ đã được giữ nguyên): {ex.Message}";
+                    BackupStatusText.Text = $"❌ Không khôi phục được (dữ liệu cũ vẫn giữ nguyên): {ex.Message}";
                 }
                 finally
                 {
