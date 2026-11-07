@@ -1,0 +1,8 @@
+{
+  "ChatInputSelector": "#richInput, div[contenteditable='true'][id*='input'], div[contenteditable='true']",
+  "SendButtonSelector": "[data-translate-title='STR_SEND'], .send-msg-btn, div[title='Gửi'], i.fa-Sent-msg_24_Line",
+  "AvatarSelector": "#main-tab img, nav img, [data-id='div_Main_Tab'] img, .zavatar img, .rel.zavatar-container img",
+  "ActiveChatTitleSelector": "header .header-title, .thread-chat-title, #header .title",
+  "UnreadBadgeSelector": "#main-tab .z-noti-badge, nav .z-noti-badge, [class*='noti-badge'], [class*='unread-count'], .fa-num5",
+  "TitleElementSelector": "title"
+}

@@ -1,0 +1,117 @@
+<Window x:Class="ZaloMultiWorkspace.Views.Dialogs.AddAccountWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Cấu hình Tài khoản Zalo &amp; Proxy" Height="560" Width="480"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="#1C1C21" Foreground="#F4F4F6" FontFamily="Segoe UI">
+
+    <Window.Resources>
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#26262E"/>
+            <Setter Property="Foreground" Value="#F4F4F6"/>
+            <Setter Property="BorderBrush" Value="#32323D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="CaretBrush" Value="#F4F4F6"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#26262E"/>
+            <Setter Property="Foreground" Value="#141417"/>
+            <Setter Property="Padding" Value="8,5"/>
+        </Style>
+    </Window.Resources>
+
+    <Border Padding="20" BorderBrush="#2E2E38" BorderThickness="1">
+        <DockPanel LastChildFill="True">
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                <Button Content="Hủy bỏ" Width="96" Height="34" Margin="0,0,10,0"
+                        Command="{Binding CancelCommand}"
+                        Background="#26262E" Foreground="#E4E4E7" BorderBrush="#32323D" Cursor="Hand"/>
+                <Button Content="💾 Lưu cấu hình" Width="130" Height="34"
+                        Command="{Binding SaveCommand}"
+                        Background="#0068FF" Foreground="White" BorderBrush="#0068FF" FontWeight="SemiBold" Cursor="Hand"/>
+            </StackPanel>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock Text="THÔNG TIN ĐỊNH DANH PROFILE" FontSize="12" FontWeight="Bold" Foreground="#60A5FA" Margin="0,0,0,10"/>
+
+                    <TextBlock Text="Tên gợi nhớ tài khoản (VD: Kỹ thuật 01, Sale 02):" FontSize="12" Foreground="#9CA3AF" Margin="0,0,0,4"/>
+                    <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
+
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Nhãn phân loại (Tag):" FontSize="12" Foreground="#9CA3AF" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding TagCategory, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Ngủ đông (phút):" FontSize="12" Foreground="#9CA3AF" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding AutoHibernateMinutes, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Separator Background="#2E2E38" Margin="0,4,0,12"/>
+
+                    <TextBlock Text="CẤU HÌNH PROXY RIÊNG &amp; CHỐNG RÒ RỈ IP" FontSize="12" FontWeight="Bold" Foreground="#60A5FA" Margin="0,0,0,10"/>
+
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="90"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Giao thức:" FontSize="12" Foreground="#9CA3AF" Margin="0,0,0,4"/>
+                            <ComboBox SelectedValuePath="Content" SelectedValue="{Binding ProxyType}">
+                                <ComboBoxItem Content="http"/>
+                                <ComboBoxItem Content="socks5"/>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Địa chỉ IP / Host (Để trống nếu dùng mạng gốc):" FontSize="12" Foreground="#9CA3AF" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding ProxyHost, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Text="Port:" FontSize="12" Foreground="#9CA3AF" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding ProxyPortText, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Tài khoản Proxy (User - tùy chọn):" FontSize="12" Foreground="#9CA3AF" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding ProxyUser, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Mật khẩu Proxy (Pass - tùy chọn):" FontSize="12" Foreground="#9CA3AF" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding ProxyPass, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Background="#141417" BorderBrush="#2E2E38" BorderThickness="1" CornerRadius="6" Padding="10">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="🛡️ Kiểm tra Proxy" Padding="10,5"
+                                    Command="{Binding TestProxyCommand}"
+                                    Background="#26262E" Foreground="#E4E4E7" BorderBrush="#32323D" Cursor="Hand"/>
+                            <TextBlock Text="{Binding ProxyTestStatus}" FontSize="11" Foreground="#A1A1AA"
+                                       VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,0"/>
+                        </DockPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</Window>
+

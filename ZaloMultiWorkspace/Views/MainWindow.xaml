@@ -1,0 +1,479 @@
+<Window x:Class="ZaloMultiWorkspace.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:tb="http://www.hardcodet.net/taskbar"
+        xmlns:models="clr-namespace:ZaloMultiWorkspace.Models"
+        Title="Zalo Multi-Workspace Pro" Height="760" Width="1280"
+        MinHeight="600" MinWidth="960"
+        WindowStartupLocation="CenterScreen"
+        Icon="pack://application:,,,/Assets/app.ico"
+        Background="#141417" Foreground="#F4F4F6"
+        FontFamily="Segoe UI"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        Closing="Window_Closing">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <Style x:Key="ToolbarButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#26262E"/>
+            <Setter Property="Foreground" Value="#E4E4E7"/>
+            <Setter Property="BorderBrush" Value="#32323D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Margin" Value="4,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#32323D"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="QuickReplyCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#26262E"/>
+            <Setter Property="BorderBrush" Value="#2E2E38"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="28"/>
+        </Grid.RowDefinitions>
+
+        <!-- System Tray Icon (Giai đoạn 5) -->
+        <tb:TaskbarIcon x:Name="TrayIcon"
+                        IconSource="pack://application:,,,/Assets/app.ico"
+                        ToolTipText="Zalo Multi-Workspace Pro"
+                        TrayMouseDoubleClick="TrayIcon_TrayMouseDoubleClick">
+            <tb:TaskbarIcon.ContextMenu>
+                <ContextMenu Background="#1C1C21" Foreground="#F4F4F6" BorderBrush="#2E2E38">
+                    <MenuItem Header="🗔 Mở Zalo Multi-Workspace Pro" Click="TrayOpen_Click"/>
+                    <MenuItem Header="🔒 Khóa màn hình ngay (Master Lock)" Click="TrayLock_Click"/>
+                    <MenuItem Header="💤 Ngủ đông tất cả tài khoản" Click="TrayHibernateAll_Click"/>
+                    <Separator Background="#2E2E38"/>
+                    <MenuItem Header="❌ Thoát hoàn toàn" Click="TrayExit_Click"/>
+                </ContextMenu>
+            </tb:TaskbarIcon.ContextMenu>
+        </tb:TaskbarIcon>
+
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="68"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ZONE 1: LEFT ACCOUNT RAIL -->
+            <Border Grid.Column="0" Background="#141417" BorderBrush="#2E2E38" BorderThickness="0,0,1,0">
+                <DockPanel LastChildFill="True">
+                    <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,14" HorizontalAlignment="Center">
+                        <Separator Background="#2E2E38" Margin="10,0,10,12"/>
+                        <Button Width="44" Height="44" Margin="0,0,0,10" ToolTip="Thêm tài khoản Zalo mới"
+                                Click="AddAccount_Click"
+                                Style="{StaticResource ToolbarButtonStyle}" Background="#1F2937" BorderBrush="#0068FF">
+                            <TextBlock Text="+" FontSize="22" FontWeight="Bold" Foreground="#0068FF" Margin="0,-2,0,0"/>
+                        </Button>
+                        <Button Width="44" Height="44" ToolTip="Cài đặt hệ thống &amp; Sao lưu"
+                                Click="OpenSettings_Click"
+                                Style="{StaticResource ToolbarButtonStyle}">
+                            <TextBlock Text="⚙" FontSize="18"/>
+                        </Button>
+                    </StackPanel>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Hidden" Padding="0,12,0,0">
+                        <ItemsControl ItemsSource="{Binding Accounts}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:ZaloAccountProfile}">
+                                    <Grid Width="68" Height="56" Margin="0,0,0,8" Cursor="Hand"
+                                          Background="Transparent"
+                                          MouseLeftButtonDown="AccountItem_MouseLeftButtonDown"
+                                          Tag="{Binding}">
+                                        <Grid.ToolTip>
+                                            <ToolTip Background="#1C1C21" Foreground="#F4F4F6" BorderBrush="#2E2E38">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="12"/>
+                                                    <TextBlock Text="{Binding TagCategory}" Foreground="#93C5FD" FontSize="11"/>
+                                                    <TextBlock Text="{Binding ProxyDisplayText}" Foreground="#9CA3AF" FontSize="11"/>
+                                                </StackPanel>
+                                            </ToolTip>
+                                        </Grid.ToolTip>
+
+                                        <Grid.ContextMenu>
+                                            <ContextMenu Background="#1C1C21" Foreground="#F4F4F6" BorderBrush="#2E2E38"
+                                                         PlacementTarget="{Binding RelativeSource={RelativeSource AncestorType=Grid}}">
+                                                <MenuItem Header="⚡ Khởi chạy / Đánh thức" Click="ContextWakeAccount_Click" CommandParameter="{Binding}"/>
+                                                <MenuItem Header="💤 Ngủ đông tài khoản này" Click="ContextHibernateAccount_Click" CommandParameter="{Binding}"/>
+                                                <MenuItem Header="✏️ Cấu hình Profile &amp; Proxy" Click="ContextEditAccount_Click" CommandParameter="{Binding}"/>
+                                                <MenuItem Header="📂 Mở thư mục Profile" Click="ContextOpenFolder_Click" CommandParameter="{Binding}"/>
+                                                <Separator Background="#2E2E38"/>
+                                                <MenuItem Header="🗑️ Xóa tài khoản" Foreground="#F87171" Click="ContextDeleteAccount_Click" CommandParameter="{Binding}"/>
+                                            </ContextMenu>
+                                        </Grid.ContextMenu>
+
+                                        <!-- Vạch chỉ thị Active (#0068FF) -->
+                                        <Border Width="4" Height="36" Background="#0068FF" CornerRadius="0,3,3,0" HorizontalAlignment="Left"
+                                                Visibility="{Binding IsSelected, Converter={StaticResource BoolToVis}}"/>
+
+                                        <!-- Avatar vòng tròn -->
+                                        <Border Width="46" Height="46" CornerRadius="23" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#26262E"/>
+                                                    <Setter Property="BorderBrush" Value="#3F3F46"/>
+                                                    <Setter Property="BorderThickness" Value="1"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                            <Setter Property="Background" Value="#0068FF"/>
+                                                            <Setter Property="BorderBrush" Value="#60A5FA"/>
+                                                            <Setter Property="BorderThickness" Value="2"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding ConnectionStatus}" Value="Hibernated">
+                                                            <Setter Property="Opacity" Value="0.65"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Grid>
+                                                <TextBlock Text="{Binding Initials}" FontWeight="Bold" FontSize="13"
+                                                           Foreground="#F4F4F6" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasAvatar}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <Ellipse Width="42" Height="42" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                         Visibility="{Binding HasAvatar, Converter={StaticResource BoolToVis}}">
+                                                    <Ellipse.Fill>
+                                                        <ImageBrush ImageSource="{Binding AvatarImageSource}" Stretch="UniformToFill"/>
+                                                    </Ellipse.Fill>
+                                                </Ellipse>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Badge đỏ số tin nhắn chưa đọc -->
+                                        <Border Background="#EF4444" CornerRadius="9" MinWidth="18" Height="18" Padding="4,0"
+                                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,8,0"
+                                                BorderBrush="#141417" BorderThickness="2"
+                                                Visibility="{Binding HasUnread, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="{Binding UnreadCount}" FontSize="10" FontWeight="Bold"
+                                                       Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+
+                                        <!-- Chấm trạng thái: Online (🟢), Hibernated (💤), ProxyError (🔴) -->
+                                        <Grid HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,9,3">
+                                            <Ellipse Width="12" Height="12" Stroke="#141417" StrokeThickness="2">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Fill" Value="#22C55E"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ConnectionStatus}" Value="Hibernated">
+                                                                <Setter Property="Fill" Value="#F59E0B"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding ConnectionStatus}" Value="ProxyError">
+                                                                <Setter Property="Fill" Value="#EF4444"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding ConnectionStatus}" Value="Connecting">
+                                                                <Setter Property="Fill" Value="#60A5FA"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                        </Grid>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <!-- ZONE 2 & 3: CENTER WORKSPACE -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="46"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- ZONE 2: Header -->
+                <Border Grid.Row="0" Background="#1C1C21" BorderBrush="#2E2E38" BorderThickness="0,0,0,1" Padding="16,0">
+                    <DockPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding SelectedAccount.DisplayName, FallbackValue='Chưa chọn tài khoản'}"
+                                       FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <Border Background="#1E3A8A" CornerRadius="4" Padding="6,2" Margin="0,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SelectedAccount.TagCategory, FallbackValue='Workspace'}" FontSize="11" Foreground="#93C5FD"/>
+                            </Border>
+                            <Border Background="#26262E" BorderBrush="#32323D" BorderThickness="1" CornerRadius="4" Padding="8,3" VerticalAlignment="Center"
+                                    Cursor="Hand" MouseLeftButtonDown="EditSelectedAccountProxy_Click" ToolTip="Nhấn để cấu hình Proxy cho tài khoản này">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="7" Height="7" VerticalAlignment="Center" Margin="0,0,6,0">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="#22C55E"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedAccount.ConnectionStatus}" Value="ProxyError">
+                                                        <Setter Property="Fill" Value="#EF4444"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding SelectedAccount.ConnectionStatus}" Value="Hibernated">
+                                                        <Setter Property="Fill" Value="#F59E0B"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock Text="{Binding SelectedAccount.ProxyDisplayText, FallbackValue='Mạng trực tiếp'}" FontSize="11" Foreground="#A1A1AA"/>
+                                    <TextBlock Text="{Binding SelectedAccount.PingDisplayText}" FontSize="11" Foreground="#22C55E" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Button Content="🔄 Tải lại" Command="{Binding ReloadCurrentAccountCommand}" Style="{StaticResource ToolbarButtonStyle}" FontSize="12"/>
+                            <Button Content="💤 Ngủ đông" Command="{Binding HibernateCurrentAccountCommand}" Style="{StaticResource ToolbarButtonStyle}" FontSize="12"/>
+                            <Button Content="📂 Mở Profile" Command="{Binding OpenProfileFolderCommand}" Style="{StaticResource ToolbarButtonStyle}" FontSize="12"/>
+                            <Button Content="🔒 Khóa nhanh" Command="{Binding LockWorkspaceCommand}" Style="{StaticResource ToolbarButtonStyle}" FontSize="12"/>
+                            <Button Content="📌 Trợ lý CSKH" Command="{Binding ToggleRightDrawerCommand}" Style="{StaticResource ToolbarButtonStyle}" FontSize="12" Background="#0068FF" BorderBrush="#0068FF"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- THANH THÔNG BÁO NỔI IN-APP KHI CÓ TIN NHẮN TỪ TÀI KHOẢN KHÁC -->
+                <Border Grid.Row="1" Background="#1E3A8A" BorderBrush="#3B82F6" BorderThickness="0,0,0,1" Padding="14,8"
+                        Visibility="{Binding IsInAppNotificationVisible, Converter={StaticResource BoolToVis}}">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="Xem ngay ➔" Command="{Binding SwitchToNotifiedAccountCommand}"
+                                    Style="{StaticResource ToolbarButtonStyle}" Background="#0068FF" BorderBrush="#60A5FA"
+                                    Foreground="White" FontWeight="SemiBold" FontSize="11" Padding="10,4"/>
+                            <Button Content="✕" Command="{Binding DismissNotificationCommand}"
+                                    Style="{StaticResource ToolbarButtonStyle}" Background="Transparent" BorderThickness="0"
+                                    Foreground="#93C5FD" FontSize="12" Padding="6,2"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding NotificationHeader}" FontWeight="Bold" FontSize="12" Foreground="#FFFFFF" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding NotificationBody}" FontSize="12" Foreground="#DBEAFE" TextTrimming="CharacterEllipsis" MaxWidth="520" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- ZONE 3: WebView2 Host Container -->
+                <Grid Grid.Row="2" Background="#18181B">
+                    <!-- Màn hình chờ khi tài khoản đang ở chế độ Ngủ đông / Chưa khởi chạy / Lỗi Proxy -->
+                    <Border Background="#18181B" Panel.ZIndex="1"
+                            Visibility="{Binding ShowPlaceholderOverlay, Converter={StaticResource BoolToVis}}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="460">
+                            <Border Width="64" Height="64" CornerRadius="32" Background="#26262E" HorizontalAlignment="Center" Margin="0,0,0,16">
+                                <TextBlock Text="💬" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="{Binding SelectedAccount.DisplayName, StringFormat='Phiên làm việc: {0}'}" 
+                                       FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                            <TextBlock Text="Mỗi tài khoản Zalo được khởi tạo một đối tượng WebView2 riêng với đường dẫn UserDataFolder độc lập nằm trong vùng chứa này." 
+                                       FontSize="13" Foreground="#9CA3AF" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,10"/>
+                            <TextBlock Text="{Binding SelectedAccount.StatusMessage}" 
+                                       FontSize="12" Foreground="#FBBF24" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,20"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Button Content="⚡ Khởi chạy / Đánh thức tài khoản" Width="240" Height="38"
+                                        Command="{Binding StartOrWakeSelectedAccountCommand}"
+                                        Style="{StaticResource ToolbarButtonStyle}" Background="#0068FF" BorderBrush="#0068FF" FontWeight="SemiBold"/>
+                                <Button Content="✏️ Cấu hình Proxy" Width="130" Height="38" Margin="8,0,0,0"
+                                        Click="EditSelectedAccountProxy_Click"
+                                        Style="{StaticResource ToolbarButtonStyle}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Grid chứa tất cả các thực thể WebView2 độc lập (Ẩn khi mở Dialog/Lock để chống lỗi WPF Airspace) -->
+                    <Grid x:Name="WebViewHostGrid" Background="#18181B"
+                          Visibility="{Binding IsWebViewAirspaceClear, Converter={StaticResource BoolToVis}}"/>
+                </Grid>
+            </Grid>
+
+            <!-- ZONE 4: RIGHT PRODUCTIVITY DRAWER -->
+            <Border Grid.Column="2" Width="300" Background="#1C1C21" BorderBrush="#2E2E38" BorderThickness="1,0,0,0"
+                    Visibility="{Binding IsRightDrawerOpen, Converter={StaticResource BoolToVis}}">
+                <DockPanel>
+                    <!-- Thanh chuyển đổi Tin mẫu / Ghi chú KH -->
+                    <Border DockPanel.Dock="Top" Height="46" BorderBrush="#2E2E38" BorderThickness="0,0,0,1" Padding="10,0">
+                        <Grid VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="⚡ Tin mẫu" Command="{Binding SwitchToQuickReplyTabCommand}"
+                                        Style="{StaticResource ToolbarButtonStyle}" Padding="8,4" FontSize="11"/>
+                                <Button Content="📝 Ghi chú KH" Command="{Binding SwitchToCustomerNotesTabCommand}"
+                                        Style="{StaticResource ToolbarButtonStyle}" Padding="8,4" FontSize="11"/>
+                            </StackPanel>
+                            <Button Content="+ Thêm" HorizontalAlignment="Right" Click="AddQuickReply_Click"
+                                    Visibility="{Binding IsQuickReplyTabActive, Converter={StaticResource BoolToVis}}"
+                                    Style="{StaticResource ToolbarButtonStyle}" Padding="8,3" FontSize="11"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- TAB 1: TIN NHẮN MẪU (QUICK REPLIES) -->
+                    <DockPanel Visibility="{Binding IsQuickReplyTabActive, Converter={StaticResource BoolToVis}}">
+                        <Border DockPanel.Dock="Top" Padding="12,12,12,8">
+                            <Border Background="#26262E" BorderBrush="#32323D" BorderThickness="1" CornerRadius="5" Padding="8,4">
+                                <DockPanel>
+                                    <TextBlock Text="🔍" Foreground="#71717A" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBox Text="{Binding QuickReplySearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                             Background="Transparent" Foreground="#F4F4F6" BorderThickness="0" CaretBrush="#F4F4F6"
+                                             FontSize="12" VerticalContentAlignment="Center"
+                                             ToolTip="Tìm nhanh theo phím tắt (VD: /baogia, /chao, /stk)"/>
+                                </DockPanel>
+                            </Border>
+                        </Border>
+
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,4,12,12">
+                            <ItemsControl ItemsSource="{Binding FilteredQuickReplies}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:QuickReplyTemplate}">
+                                        <Border Style="{StaticResource QuickReplyCardStyle}">
+                                            <StackPanel>
+                                                <DockPanel Margin="0,0,0,6">
+                                                    <Border Background="#065F46" CornerRadius="3" Padding="5,1" HorizontalAlignment="Left">
+                                                        <TextBlock Text="{Binding Shortcut}" FontSize="11" FontWeight="Bold" Foreground="#6EE7B7"/>
+                                                    </Border>
+                                                    <Button DockPanel.Dock="Right" Content="✕" FontSize="10" Padding="4,0"
+                                                            Command="{Binding DataContext.DeleteQuickReplyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Background="Transparent" Foreground="#71717A" BorderThickness="0" Cursor="Hand"
+                                                            ToolTip="Xóa mẫu tin này"/>
+                                                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                                </DockPanel>
+                                                <TextBlock Text="{Binding Content}"
+                                                           FontSize="12" Foreground="#A1A1AA" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                                <TextBlock Text="🖼️ Có đính kèm ảnh" FontSize="11" Foreground="#60A5FA" Margin="0,0,0,8"
+                                                           Visibility="{Binding HasImage, Converter={StaticResource BoolToVis}}"/>
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                    <Button Content="Chèn vào ô chat"
+                                                            Command="{Binding DataContext.InsertQuickReplyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource ToolbarButtonStyle}" FontSize="11" Padding="8,3"/>
+                                                    <Button Content="Gửi ngay ➔"
+                                                            Command="{Binding DataContext.SendQuickReplyNowCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource ToolbarButtonStyle}" FontSize="11" Padding="8,3" Background="#0068FF" BorderBrush="#0068FF"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+
+                    <!-- TAB 2: GHI CHÚ KHÁCH HÀNG (MINI-CRM) -->
+                    <DockPanel Visibility="{Binding IsCustomerNotesTabActive, Converter={StaticResource BoolToVis}}">
+                        <Border DockPanel.Dock="Top" Padding="12" BorderBrush="#2E2E38" BorderThickness="0,0,0,1">
+                            <StackPanel>
+                                <TextBlock Text="Thêm ghi chú khách hàng (Mini-CRM):" FontSize="11" Foreground="#9CA3AF" Margin="0,0,0,6"/>
+                                <TextBox Text="{Binding NewNoteCustomerName, UpdateSourceTrigger=PropertyChanged}"
+                                         Background="#26262E" Foreground="#F4F4F6" BorderBrush="#32323D" Padding="6,4" Margin="0,0,0,6"
+                                         ToolTip="Tên khách hàng / Hội thoại"/>
+                                <TextBox Text="{Binding NewNoteContent, UpdateSourceTrigger=PropertyChanged}"
+                                         Background="#26262E" Foreground="#F4F4F6" BorderBrush="#32323D" Padding="6,4" Height="54"
+                                         TextWrapping="Wrap" AcceptsReturn="True" Margin="0,0,0,8"
+                                         ToolTip="Nội dung ghi chú công nợ, lịch hẹn, báo giá..."/>
+                                <Button Content="💾 Lưu ghi chú KH" Command="{Binding SaveCustomerNoteCommand}"
+                                        Style="{StaticResource ToolbarButtonStyle}" Background="#0068FF" BorderBrush="#0068FF" FontSize="11" HorizontalAlignment="Right"/>
+                            </StackPanel>
+                        </Border>
+
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                            <ItemsControl ItemsSource="{Binding CurrentAccountNotes}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:CustomerNote}">
+                                        <Border Style="{StaticResource QuickReplyCardStyle}">
+                                            <StackPanel>
+                                                <DockPanel Margin="0,0,0,4">
+                                                    <Button DockPanel.Dock="Right" Content="✕" FontSize="10" Padding="4,0"
+                                                            Command="{Binding DataContext.DeleteCustomerNoteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Background="Transparent" Foreground="#71717A" BorderThickness="0" Cursor="Hand"/>
+                                                    <TextBlock Text="{Binding CustomerName}" FontWeight="Bold" FontSize="12" Foreground="#93C5FD"/>
+                                                </DockPanel>
+                                                <TextBlock Text="{Binding NoteContent}" FontSize="12" Foreground="#E4E4E7" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                                <TextBlock Text="{Binding UpdatedAt, StringFormat='Cập nhật: {0:dd/MM/yyyy HH:mm}'}" FontSize="10" Foreground="#71717A"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- ZONE 5: BOTTOM STATUS BAR -->
+        <Border Grid.Row="1" Background="#141417" BorderBrush="#2E2E38" BorderThickness="0,1,0,0" Padding="14,0">
+            <DockPanel VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding TotalUnreadText}" FontSize="11" Foreground="#F87171" FontWeight="SemiBold" Margin="0,0,16,0"/>
+                    <TextBlock Text="|" Foreground="#3F3F46" Margin="0,0,16,0"/>
+                    <TextBlock Text="{Binding RunningStatsText}" FontSize="11" Foreground="#A1A1AA" Margin="0,0,16,0"/>
+                    <TextBlock Text="{Binding HibernatedStatsText}" FontSize="11" Foreground="#FBBF24"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock Text="{Binding TotalRamUsageText}" FontSize="11" Foreground="#9CA3AF" Margin="0,0,16,0"/>
+                    <TextBlock Text="{Binding AutoLockStatusText}" FontSize="11" Foreground="#60A5FA" Cursor="Hand"
+                               MouseLeftButtonDown="OpenSettings_Click" ToolTip="Nhấn để cấu hình Tự động khóa &amp; Sao lưu"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- MÀN HÌNH KHÓA BẢO MẬT MASTER LOCK (Đè lên toàn bộ khi IsLocked = True, WebView2 đã tự ẩn) -->
+        <Border Grid.Row="0" Grid.RowSpan="2" Background="#F2141417" Panel.ZIndex="99"
+                Visibility="{Binding IsLocked, Converter={StaticResource BoolToVis}}">
+            <Border Width="360" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Background="#1C1C21" BorderBrush="#2E2E38" BorderThickness="1" CornerRadius="10" Padding="24">
+                <StackPanel>
+                    <Border Width="54" Height="54" CornerRadius="27" Background="#26262E" HorizontalAlignment="Center" Margin="0,0,0,12">
+                        <TextBlock Text="🔒" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="Zalo Multi-Workspace Đã Khóa" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                    <TextBlock Text="Nhập mã PIN bảo mật (Mặc định: 1234) để tiếp tục phiên làm việc."
+                               FontSize="12" Foreground="#9CA3AF" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,16"/>
+
+                    <TextBox x:Name="PinLockInputBox"
+                             Text="{Binding PinInput, UpdateSourceTrigger=PropertyChanged}"
+                             Background="#26262E" Foreground="#F4F4F6" BorderBrush="#32323D" Padding="10,8"
+                             FontSize="16" FontWeight="Bold" TextAlignment="Center" Margin="0,0,0,10"
+                             KeyDown="PinLockInputBox_KeyDown"/>
+
+                    <TextBlock Text="{Binding LockErrorMessage}" Foreground="#EF4444" FontSize="11"
+                               HorizontalAlignment="Center" Margin="0,0,0,10"/>
+
+                    <Button Content="🔓 Mở khóa Workspace" Height="38"
+                            Command="{Binding UnlockWorkspaceCommand}"
+                            Style="{StaticResource ToolbarButtonStyle}" Background="#0068FF" BorderBrush="#0068FF" FontWeight="SemiBold"/>
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+</Window>
+

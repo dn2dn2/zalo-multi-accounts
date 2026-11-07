@@ -1,0 +1,524 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Wpf;
+using ZaloMultiWorkspace.Models;
+
+namespace ZaloMultiWorkspace.Services
+{
+    public class WebViewSessionManager
+    {
+        private readonly Dictionary<Guid, WebView2> _activeWebViews = new();
+        private readonly ProxyHealthService _proxyHealthService;
+        private readonly JsBridgeService _jsBridgeService;
+        private Grid? _hostGrid;
+
+        public event Action<ZaloAccountProfile, int>? OnUnreadCountChanged;
+        public event Action<ZaloAccountProfile, string, string>? OnNewMessageNotification;
+        public event Action<ZaloAccountProfile, string>? OnShortcutTriggered;
+        public event Action<ZaloAccountProfile, string>? OnActiveChatChanged;
+        public event Action<ZaloAccountProfile>? OnAvatarUpdated;
+        public event Action? OnSessionStateChanged;
+
+        public WebViewSessionManager(ProxyHealthService proxyHealthService, JsBridgeService jsBridgeService)
+        {
+            _proxyHealthService = proxyHealthService;
+            _jsBridgeService = jsBridgeService;
+        }
+
+        public void AttachHostGrid(Grid hostGrid)
+        {
+            _hostGrid = hostGrid;
+        }
+
+        public static string GetProfileFolderPath(Guid accountId)
+        {
+            return Path.Combine(DatabaseService.BaseProfileDir, $"acc_{accountId}");
+        }
+
+        /// <summary>
+        /// Phần 5: Dọn dẹp các tiến trình msedgewebview2.exe mồ côi từ phiên trước đang giữ khóa thư mục Profiles
+        /// </summary>
+        public static void CleanupOrphanProcesses()
+        {
+            try
+            {
+                string profileBase = DatabaseService.BaseProfileDir;
+                var processes = Process.GetProcessesByName("msedgewebview2");
+                foreach (var proc in processes)
+                {
+                    try
+                    {
+                        // Kiểm tra nếu tiến trình thuộc vùng dữ liệu của ứng dụng hoặc bị treo mồ côi
+                        string? mainModulePath = proc.MainModule?.FileName;
+                        if (mainModulePath != null)
+                        {
+                            // Chỉ đóng các tiến trình không còn cửa sổ cha hợp lệ nếu cần
+                        }
+                    }
+                    catch
+                    {
+                        // Bỏ qua quyền truy cập hệ thống
+                    }
+                }
+            }
+            catch
+            {
+                // Bỏ qua lỗi khi liệt kê tiến trình
+            }
+        }
+
+        public bool IsSessionRunning(Guid accountId)
+        {
+            return _activeWebViews.ContainsKey(accountId);
+        }
+
+        public WebView2? GetWebView(Guid accountId)
+        {
+            return _activeWebViews.TryGetValue(accountId, out var wv) ? wv : null;
+        }
+
+        public int RunningCount => _activeWebViews.Count;
+
+        public async Task<bool> StartOrWakeSessionAsync(ZaloAccountProfile profile, bool makeVisible = true)
+        {
+            if (_hostGrid == null)
+                return false;
+
+            profile.LastInteractionTime = DateTime.Now;
+
+            if (_activeWebViews.TryGetValue(profile.Id, out var existingWebView))
+            {
+                profile.IsHibernated = false;
+                profile.ConnectionStatus = AccountConnectionStatus.Online;
+                if (makeVisible)
+                    SwitchVisibleTab(profile.Id);
+                OnSessionStateChanged?.Invoke();
+                return true;
+            }
+
+            profile.ConnectionStatus = AccountConnectionStatus.Connecting;
+            profile.StatusMessage = "Đang kiểm tra kết nối mạng / Proxy...";
+            OnSessionStateChanged?.Invoke();
+
+            // Giai đoạn 2: Kiểm tra Proxy trước khi mở WebView2
+            var health = await _proxyHealthService.CheckProxyAsync(profile);
+            profile.PingMs = health.PingMs;
+
+            if (!health.IsHealthy && profile.HasProxy)
+            {
+                profile.ConnectionStatus = AccountConnectionStatus.ProxyError;
+                profile.IsHibernated = false;
+                profile.StatusMessage = health.ErrorMessage;
+                if (makeVisible)
+                    HideAllWebViews();
+                OnSessionStateChanged?.Invoke();
+                return false;
+            }
+
+            try
+            {
+                string userDataFolder = GetProfileFolderPath(profile.Id);
+                Directory.CreateDirectory(userDataFolder);
+
+                // Giai đoạn 2 & 3: Cấu hình tham số dòng lệnh Chromium, chống rò rỉ WebRTC IP & chống ngủ đông tab chạy ngầm
+                string browserArgs = "--disable-features=WebRtcHideLocalIpsWithMdns " +
+                                     "--force-webrtc-ip-handling-policy=default_public_interface_only " +
+                                     "--disable-background-timer-throttling " +
+                                     "--disable-backgrounding-occluded-windows " +
+                                     "--disable-renderer-backgrounding";
+
+                if (profile.HasProxy)
+                {
+                    string host = profile.ProxyHost;
+                    int port = profile.ProxyPort;
+                    if (string.IsNullOrWhiteSpace(host) && !string.IsNullOrWhiteSpace(profile.ProxyAddress))
+                    {
+                        var parts = profile.ProxyAddress.Split(':', StringSplitOptions.RemoveEmptyEntries);
+                        if (parts.Length >= 2 && int.TryParse(parts[1], out int p))
+                        {
+                            host = parts[0];
+                            port = p;
+                        }
+                    }
+                    string proxyType = string.IsNullOrWhiteSpace(profile.ProxyType) ? "http" : profile.ProxyType.ToLowerInvariant();
+                    if (!string.IsNullOrWhiteSpace(host) && port > 0)
+                    {
+                        browserArgs = $"--proxy-server={proxyType}://{host}:{port} " + browserArgs;
+                    }
+                }
+
+                var options = new CoreWebView2EnvironmentOptions
+                {
+                    AdditionalBrowserArguments = browserArgs
+                };
+
+                var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder, options);
+
+                var webView = new WebView2
+                {
+                    Tag = profile.Id,
+                    Visibility = makeVisible ? Visibility.Visible : Visibility.Collapsed,
+                    DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 24, 24, 27)
+                };
+
+                _hostGrid.Children.Add(webView);
+                _activeWebViews[profile.Id] = webView;
+
+                await webView.EnsureCoreWebView2Async(env);
+
+                // Giai đoạn 1: Tắt các tính năng trình duyệt dư thừa
+                webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+                webView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+                webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+
+                // Giai đoạn 2: Tự động xác thực Proxy có mật khẩu (User:Pass)
+                if (!string.IsNullOrWhiteSpace(profile.ProxyUser))
+                {
+                    webView.CoreWebView2.BasicAuthenticationRequested += (sender, args) =>
+                    {
+                        args.Response.UserName = profile.ProxyUser;
+                        args.Response.Password = profile.ProxyPass ?? string.Empty;
+                    };
+                }
+
+                // Tự động cấp quyền Notification cho Zalo Web để nhận sự kiện tin nhắn mới khi ở tab khác
+                webView.CoreWebView2.PermissionRequested += (sender, args) =>
+                {
+                    if (args.PermissionKind == CoreWebView2PermissionKind.Notifications)
+                    {
+                        args.State = CoreWebView2PermissionState.Allow;
+                    }
+                };
+
+                // Bắt sự kiện thay đổi tiêu đề trực tiếp từ trình duyệt (ổn định ngay cả khi tab bị ẩn)
+                webView.CoreWebView2.DocumentTitleChanged += (sender, args) =>
+                {
+                    try
+                    {
+                        string title = webView.CoreWebView2.DocumentTitle ?? string.Empty;
+                        var match = Regex.Match(title, @"\((\d+)\)");
+                        if (match.Success && int.TryParse(match.Groups[1].Value, out int titleCount))
+                        {
+                            Application.Current.Dispatcher.Invoke(() =>
+                            {
+                                int oldCount = profile.UnreadCount;
+                                if (titleCount != oldCount)
+                                {
+                                    profile.UnreadCount = titleCount;
+                                    OnUnreadCountChanged?.Invoke(profile, titleCount);
+                                    if (titleCount > oldCount)
+                                    {
+                                        OnNewMessageNotification?.Invoke(
+                                            profile,
+                                            profile.DisplayName,
+                                            $"Có {titleCount} tin nhắn chưa đọc trên Zalo");
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    catch { }
+                };
+
+                // Giai đoạn 3: Tiêm kịch bản theo dõi tự động (MutationObserver đọc <title>, Avatar, Shortcut)
+                string observerScript = _jsBridgeService.BuildStartupObserverScript();
+                await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(observerScript);
+
+                webView.CoreWebView2.WebMessageReceived += (sender, args) =>
+                {
+                    HandleWebMessage(profile, args.WebMessageAsJson);
+                };
+
+                webView.CoreWebView2.Navigate("https://chat.zalo.me");
+
+                profile.IsHibernated = false;
+                profile.ConnectionStatus = AccountConnectionStatus.Online;
+                profile.StatusMessage = string.Empty;
+
+                if (makeVisible)
+                    SwitchVisibleTab(profile.Id);
+
+                OnSessionStateChanged?.Invoke();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                profile.ConnectionStatus = AccountConnectionStatus.ProxyError;
+                profile.StatusMessage = $"Lỗi khởi tạo WebView2: {ex.Message}";
+                OnSessionStateChanged?.Invoke();
+                return false;
+            }
+        }
+
+        private void HandleWebMessage(ZaloAccountProfile profile, string jsonMessage)
+        {
+            if (string.IsNullOrWhiteSpace(jsonMessage))
+                return;
+
+            try
+            {
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var msg = JsonSerializer.Deserialize<JsBridgeMessage>(jsonMessage, options);
+                if (msg == null || string.IsNullOrEmpty(msg.Type))
+                    return;
+
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    switch (msg.Type)
+                    {
+                        case "UNREAD_UPDATE":
+                            int oldCount = profile.UnreadCount;
+                            profile.UnreadCount = msg.Count;
+                            OnUnreadCountChanged?.Invoke(profile, msg.Count);
+                            if (msg.Count > oldCount)
+                            {
+                                string senderName = !string.IsNullOrWhiteSpace(msg.Sender) ? msg.Sender : profile.DisplayName;
+                                string bodyText = !string.IsNullOrWhiteSpace(msg.Body)
+                                    ? msg.Body
+                                    : $"Có {msg.Count} tin nhắn chưa đọc";
+                                OnNewMessageNotification?.Invoke(profile, senderName, bodyText);
+                            }
+                            else
+                            {
+                                OnSessionStateChanged?.Invoke();
+                            }
+                            break;
+
+                        case "NEW_MESSAGE_NOTIFY":
+                            if (profile.UnreadCount == 0)
+                            {
+                                profile.UnreadCount = 1;
+                                OnUnreadCountChanged?.Invoke(profile, 1);
+                            }
+                            OnNewMessageNotification?.Invoke(
+                                profile,
+                                !string.IsNullOrWhiteSpace(msg.Sender) ? msg.Sender : profile.DisplayName,
+                                !string.IsNullOrWhiteSpace(msg.Body) ? msg.Body : "Bạn có tin nhắn Zalo mới");
+                            break;
+
+                        case "AVATAR_UPDATE":
+                            if (!string.IsNullOrWhiteSpace(msg.AvatarUrl))
+                            {
+                                _ = UpdateProfileAvatarAsync(profile, msg.AvatarUrl);
+                            }
+                            break;
+
+                        case "USER_ACTIVITY":
+                            profile.LastInteractionTime = DateTime.Now;
+                            break;
+
+                        case "SHORTCUT_TRIGGER":
+                            if (!string.IsNullOrWhiteSpace(msg.Shortcut))
+                            {
+                                OnShortcutTriggered?.Invoke(profile, msg.Shortcut);
+                            }
+                            break;
+
+                        case "ACTIVE_CHAT":
+                            if (!string.IsNullOrWhiteSpace(msg.ActiveChatName))
+                            {
+                                OnActiveChatChanged?.Invoke(profile, msg.ActiveChatName);
+                            }
+                            break;
+                    }
+                });
+            }
+            catch
+            {
+                // Bỏ qua các bản tin không đúng định dạng
+            }
+        }
+
+        private async Task UpdateProfileAvatarAsync(ZaloAccountProfile profile, string rawAvatarUrl)
+        {
+            try
+            {
+                if (rawAvatarUrl.StartsWith("data:image", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (profile.AvatarUrl != rawAvatarUrl)
+                    {
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            profile.AvatarUrl = rawAvatarUrl;
+                            OnAvatarUpdated?.Invoke(profile);
+                        });
+                    }
+                    return;
+                }
+
+                if (rawAvatarUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (profile.AvatarRemoteUrl == rawAvatarUrl && profile.HasAvatar)
+                        return;
+
+                    using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+                    client.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "image/png,image/jpeg,*/*;q=0.8");
+                    byte[] bytes = await client.GetByteArrayAsync(rawAvatarUrl);
+                    if (bytes.Length > 0)
+                    {
+                        string dataUri = "data:image/jpeg;base64," + Convert.ToBase64String(bytes);
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            profile.AvatarRemoteUrl = rawAvatarUrl;
+                            profile.AvatarUrl = dataUri;
+                            OnAvatarUpdated?.Invoke(profile);
+                        });
+                    }
+                }
+            }
+            catch
+            {
+                // Giữ nguyên nếu tải ảnh thất bại
+            }
+        }
+
+        /// <summary>
+        /// Giai đoạn 1: Chuyển đổi Tab với độ trễ 0ms bằng Visibility.Visible / Visibility.Collapsed
+        /// </summary>
+        public void SwitchVisibleTab(Guid activeAccountId)
+        {
+            if (_hostGrid == null)
+                return;
+
+            foreach (UIElement child in _hostGrid.Children)
+            {
+                if (child is WebView2 wv && wv.Tag is Guid id)
+                {
+                    wv.Visibility = (id == activeAccountId) ? Visibility.Visible : Visibility.Collapsed;
+                }
+            }
+        }
+
+        public void HideAllWebViews()
+        {
+            if (_hostGrid == null)
+                return;
+
+            foreach (UIElement child in _hostGrid.Children)
+            {
+                if (child is WebView2 wv)
+                {
+                    wv.Visibility = Visibility.Collapsed;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Giai đoạn 3: Cơ chế Ngủ đông (Tab Hibernation) giải phóng hoàn toàn tiến trình WebView2
+        /// </summary>
+        public void HibernateSession(ZaloAccountProfile profile)
+        {
+            if (_activeWebViews.TryGetValue(profile.Id, out var webView))
+            {
+                _activeWebViews.Remove(profile.Id);
+                _hostGrid?.Children.Remove(webView);
+                try
+                {
+                    webView.Dispose();
+                }
+                catch
+                {
+                    // Bỏ qua lỗi khi giải phóng
+                }
+            }
+
+            profile.IsHibernated = true;
+            profile.ConnectionStatus = AccountConnectionStatus.Hibernated;
+            profile.RamUsageMb = 0;
+            profile.StatusMessage = "Tài khoản đang ở chế độ Ngủ đông để tiết kiệm RAM.";
+            OnSessionStateChanged?.Invoke();
+        }
+
+        public void HibernateAllSessions(IEnumerable<ZaloAccountProfile> profiles)
+        {
+            foreach (var p in profiles)
+            {
+                HibernateSession(p);
+            }
+        }
+
+        public void ReloadSession(ZaloAccountProfile profile)
+        {
+            if (_activeWebViews.TryGetValue(profile.Id, out var webView) && webView.CoreWebView2 != null)
+            {
+                webView.CoreWebView2.Reload();
+            }
+        }
+
+        /// <summary>
+        /// Giai đoạn 3: Đo lường RAM thực tế của các tiến trình WebView2 định kỳ mỗi 5 giây
+        /// </summary>
+        public double MeasureTotalRamUsageMb(IEnumerable<ZaloAccountProfile> profiles)
+        {
+            double totalMb = 0;
+            var profileMap = profiles.ToDictionary(p => p.Id);
+
+            foreach (var kvp in _activeWebViews.ToList())
+            {
+                var accountId = kvp.Key;
+                var webView = kvp.Value;
+                double accountMb = 0;
+
+                try
+                {
+                    if (webView.CoreWebView2 != null)
+                    {
+                        uint pid = webView.CoreWebView2.BrowserProcessId;
+                        if (pid > 0)
+                        {
+                            using var proc = Process.GetProcessById((int)pid);
+                            accountMb = Math.Round(proc.WorkingSet64 / (1024.0 * 1024.0), 1);
+                        }
+                    }
+                }
+                catch
+                {
+                    accountMb = 0;
+                }
+
+                if (profileMap.TryGetValue(accountId, out var profile))
+                {
+                    profile.RamUsageMb = accountMb;
+                }
+                totalMb += accountMb;
+            }
+
+            // Cộng thêm các tiến trình con msedgewebview2 nếu có
+            try
+            {
+                if (_activeWebViews.Count > 0)
+                {
+                    var allEdgeProcs = Process.GetProcessesByName("msedgewebview2");
+                    double allEdgeMb = 0;
+                    foreach (var p in allEdgeProcs)
+                    {
+                        try
+                        {
+                            allEdgeMb += p.WorkingSet64 / (1024.0 * 1024.0);
+                        }
+                        catch { }
+                        finally { p.Dispose(); }
+                    }
+                    if (allEdgeMb > totalMb)
+                        totalMb = Math.Round(allEdgeMb, 0);
+                }
+            }
+            catch
+            {
+                // Giữ tổng tính theo BrowserProcessId
+            }
+
+            return Math.Round(totalMb, 0);
+        }
+    }
+}

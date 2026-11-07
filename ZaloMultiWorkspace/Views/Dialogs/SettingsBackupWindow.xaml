@@ -1,0 +1,78 @@
+<Window x:Class="ZaloMultiWorkspace.Views.Dialogs.SettingsBackupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Cài đặt Hệ thống &amp; Sao lưu Profile" Height="480" Width="480"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="#1C1C21" Foreground="#F4F4F6" FontFamily="Segoe UI">
+
+    <Window.Resources>
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#26262E"/>
+            <Setter Property="Foreground" Value="#F4F4F6"/>
+            <Setter Property="BorderBrush" Value="#32323D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="CaretBrush" Value="#F4F4F6"/>
+        </Style>
+    </Window.Resources>
+
+    <Border Padding="20" BorderBrush="#2E2E38" BorderThickness="1">
+        <DockPanel LastChildFill="True">
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                <Button Content="Đóng" Width="90" Height="34" Margin="0,0,10,0" Click="Cancel_Click"
+                        Background="#26262E" Foreground="#E4E4E7" BorderBrush="#32323D" Cursor="Hand"/>
+                <Button Content="💾 Lưu cài đặt" Width="125" Height="34" Click="Save_Click"
+                        Background="#0068FF" Foreground="White" BorderBrush="#0068FF" FontWeight="SemiBold" Cursor="Hand"/>
+            </StackPanel>
+
+            <StackPanel>
+                <TextBlock Text="BẢO MẬT &amp; KHAY HỆ THỐNG (MASTER LOCK)" FontSize="12" FontWeight="Bold" Foreground="#60A5FA" Margin="0,0,0,12"/>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="150"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Mã PIN mở khóa màn hình:" FontSize="12" Foreground="#9CA3AF" Margin="0,0,0,4"/>
+                        <TextBox x:Name="PinTextBox"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Tự khóa sau (phút rảnh):" FontSize="12" Foreground="#9CA3AF" Margin="0,0,0,4"/>
+                        <TextBox x:Name="IdleMinutesTextBox"/>
+                    </StackPanel>
+                </Grid>
+
+                <CheckBox x:Name="AutoLockCheckBox" Content="Tự động khóa ứng dụng bằng mã PIN khi không thao tác"
+                          Foreground="#E4E4E7" Margin="0,0,0,8"/>
+                <CheckBox x:Name="MinimizeToTrayCheckBox" Content="Thu nhỏ xuống khay hệ thống (System Tray) khi bấm nút [✕]"
+                          Foreground="#E4E4E7" Margin="0,0,0,14"/>
+
+                <Separator Background="#2E2E38" Margin="0,4,0,14"/>
+
+                <TextBlock Text="SAO LƯU &amp; DI CHUYỂN DỮ LIỆU (BACKUP / RESTORE)" FontSize="12" FontWeight="Bold" Foreground="#60A5FA" Margin="0,0,0,8"/>
+                <TextBlock Text="Hệ thống sẽ tự động chuyển toàn bộ tài khoản về chế độ Ngủ đông (Dispose) để mở khóa Cookie/IndexedDB trước khi đóng gói hoặc khôi phục file .zip."
+                           FontSize="11" Foreground="#9CA3AF" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Content="📦 Xuất Backup (.zip)" Height="36" Click="Backup_Click"
+                            Background="#26262E" Foreground="#6EE7B7" BorderBrush="#065F46" FontWeight="SemiBold" Cursor="Hand"/>
+                    <Button Grid.Column="2" Content="📥 Khôi phục từ .zip" Height="36" Click="Restore_Click"
+                            Background="#26262E" Foreground="#93C5FD" BorderBrush="#1E3A8A" FontWeight="SemiBold" Cursor="Hand"/>
+                </Grid>
+
+                <Border Background="#141417" BorderBrush="#2E2E38" BorderThickness="1" CornerRadius="6" Padding="10">
+                    <TextBlock x:Name="BackupStatusText" Text="Sẵn sàng sao lưu hoặc khôi phục dữ liệu Profile."
+                               FontSize="11" Foreground="#A1A1AA" TextWrapping="Wrap"/>
+                </Border>
+            </StackPanel>
+        </DockPanel>
+    </Border>
+</Window>
+
