@@ -124,7 +124,11 @@ namespace ZaloMultiWorkspace.Models
         private string _activeChatName = string.Empty;
 
         [ObservableProperty]
-        private int _autoHibernateMinutes = 30;
+        private int _autoHibernateMinutes = 0; // 0 = không bao giờ tự tạm dừng (để không lỡ tin nhắn)
+
+        /// <summary>Tự khởi chạy tài khoản khi mở ứng dụng (tài khoản cũ chưa có trường này = bật)</summary>
+        [ObservableProperty]
+        private bool _autoStartOnLaunch = true;
 
         /// <summary>Tắt popup, âm thanh và thanh thông báo của riêng tài khoản này (vẫn đếm tin chưa đọc)</summary>
         [ObservableProperty]
@@ -154,7 +158,12 @@ namespace ZaloMultiWorkspace.Models
         [NotifyPropertyChangedFor(nameof(PingChipText))]
         [NotifyPropertyChangedFor(nameof(PingLevel))]
         [NotifyPropertyChangedFor(nameof(NetworkTooltipStatus))]
+        [NotifyPropertyChangedFor(nameof(IsPaused))]
         private AccountConnectionStatus _connectionStatus = AccountConnectionStatus.Hibernated;
+
+        /// <summary>Đang tạm dừng: phiên đã đóng nên KHÔNG nhận tin mới</summary>
+        [BsonIgnore]
+        public bool IsPaused => ConnectionStatus == AccountConnectionStatus.Hibernated;
 
         /// <summary>Lần đo Ping định kỳ gần nhất thất bại (phiên vẫn chạy, chỉ báo đỏ trên chip)</summary>
         [ObservableProperty]

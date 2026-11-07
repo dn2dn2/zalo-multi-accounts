@@ -52,6 +52,12 @@ namespace ZaloMultiWorkspace.Models
         public int AutoLockIdleMinutes { get; set; } = 15;
         public bool MinimizeToTrayOnClose { get; set; } = true;
 
+        /// <summary>Tự chạy ngầm ở khay khi đăng nhập Windows</summary>
+        public bool StartWithWindows { get; set; } = false;
+
+        /// <summary>Đã chuyển tài khoản đang dùng mặc định cũ "tự tạm dừng sau 30 phút" sang "không bao giờ"</summary>
+        public bool AutoHibernateDefaultMigrated { get; set; } = false;
+
         /// <summary>Hiện thông báo "Ứng dụng vẫn chạy ở khay hệ thống" mỗi lần ẩn xuống khay (mặc định tắt)</summary>
         public bool ShowTrayHintOnClose { get; set; } = false;
 

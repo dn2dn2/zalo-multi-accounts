@@ -1,7 +1,7 @@
 <Window x:Class="ZaloMultiWorkspace.Views.Dialogs.AddAccountWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Cấu hình tài khoản" Height="720" Width="480"
+        Title="Cấu hình tài khoản" Height="770" Width="480"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         Background="{DynamicResource Brush.Bg.Panel}" Foreground="{DynamicResource Brush.Text.Primary}" FontFamily="Segoe UI">
 
@@ -99,12 +99,22 @@
                             <TextBox Text="{Binding TagCategory, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="Tự tạm dừng sau (phút)" FontSize="12" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Tự tạm dừng sau (phút)" ToolTip="0 = không bao giờ tự tạm dừng (luôn nhận tin)" FontSize="12" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding AutoHibernateMinutes, UpdateSourceTrigger=PropertyChanged}"/>
                         </StackPanel>
                     </Grid>
 
                     <Separator Background="{DynamicResource Brush.Border.Subtle}" Margin="0,4,0,12"/>
+
+                    <DockPanel Margin="0,0,0,8">
+                        <CheckBox DockPanel.Dock="Right" Style="{StaticResource SwitchStyle}" VerticalAlignment="Center"
+                                  IsChecked="{Binding AutoStartOnLaunch}" AutomationProperties.Name="Tự khởi chạy khi mở ứng dụng"/>
+                        <StackPanel>
+                            <TextBlock Text="Tự khởi chạy khi mở ứng dụng" FontSize="12" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                            <TextBlock Text="Nhận tin ngay, không cần bấm Khởi chạy. Tự tạm dừng = 0 để không bao giờ dừng." FontSize="11"
+                                       Foreground="{DynamicResource Brush.Text.Muted}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </DockPanel>
 
                     <TextBlock Text="PROXY (KHÔNG BẮT BUỘC)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource Brush.Accent.Text}" Margin="0,0,0,10"/>
 

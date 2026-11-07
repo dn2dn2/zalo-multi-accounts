@@ -168,6 +168,17 @@
                     <TextBlock Text="CỬA SỔ" Style="{StaticResource SectionTitle}"/>
                     <Border Style="{StaticResource SettingRow}">
                         <DockPanel>
+                            <CheckBox x:Name="StartWithWindowsSwitch" DockPanel.Dock="Right" Style="{StaticResource SwitchStyle}" VerticalAlignment="Center"
+                                      AutomationProperties.Name="Mở cùng Windows"/>
+                            <TextBlock Text="&#xE7E8;" Style="{StaticResource RowIcon}"/>
+                            <StackPanel>
+                                <TextBlock Text="Mở cùng Windows" Style="{StaticResource RowTitle}"/>
+                                <TextBlock Text="Chạy ngầm ở khay khi bật máy, các tài khoản tự khởi chạy để nhận tin" Style="{StaticResource RowHint}"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                    <Border Style="{StaticResource SettingRow}">
+                        <DockPanel>
                             <CheckBox x:Name="MinimizeToTrayCheckBox" DockPanel.Dock="Right" Style="{StaticResource SwitchStyle}" VerticalAlignment="Center"
                                       AutomationProperties.Name="Thu nhỏ xuống khay khi bấm X"/>
                             <TextBlock Text="&#xE70E;" Style="{StaticResource RowIcon}"/>

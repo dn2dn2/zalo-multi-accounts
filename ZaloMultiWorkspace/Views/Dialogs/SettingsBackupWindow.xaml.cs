@@ -26,6 +26,7 @@ namespace ZaloMultiWorkspace.Views.Dialogs
 
             // Tab Chung
             MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTrayOnClose;
+            StartWithWindowsSwitch.IsChecked = _settings.StartWithWindows;
             TrayHintSwitch.IsChecked = _settings.ShowTrayHintOnClose;
 
             // Tab Thông báo
@@ -178,6 +179,8 @@ namespace ZaloMultiWorkspace.Views.Dialogs
 
             // --- Chung ---
             _settings.MinimizeToTrayOnClose = MinimizeToTrayCheckBox.IsChecked == true;
+            _settings.StartWithWindows = StartWithWindowsSwitch.IsChecked == true;
+            Services.StartupService.Apply(_settings.StartWithWindows);
             _settings.ShowTrayHintOnClose = TrayHintSwitch.IsChecked == true;
 
             // --- Thông báo ---

@@ -14,6 +14,9 @@ namespace ZaloMultiWorkspace.Views
     public partial class MainWindow : Window
     {
         public MainViewModel ViewModel { get; }
+
+        /// <summary>Mở cùng Windows: chạy ngầm ở khay, không hiện cửa sổ</summary>
+        public bool StartHiddenInTray { get; set; }
         private readonly Services.TrayBadgeService _trayBadge = new();
         private bool _isExplicitExit = false;
 
@@ -28,6 +31,23 @@ namespace ZaloMultiWorkspace.Views
 
             // Gắn Grid chứa các thực thể WebView2
             ViewModel.SessionManager.AttachHostGrid(WebViewHostGrid);
+
+            Loaded += async (s, e) =>
+            {
+                if (StartHiddenInTray)
+                {
+                    Hide();
+                    Opacity = 1;
+                }
+                // Đồng bộ đường dẫn chạy cùng Windows (nếu đang bật) rồi tự khởi chạy các tài khoản
+                Services.StartupService.Apply(ViewModel.DatabaseService.GetSettings().StartWithWindows);
+                await ViewModel.StartAutoLaunchAccountsAsync();
+            };
+            SourceInitialized += (s, e) =>
+            {
+                if (StartHiddenInTray)
+                    Opacity = 0; // tránh nháy cửa sổ trước khi ẩn xuống khay
+            };
 
             // Icon khay: chấm đỏ khi có tin chưa đọc + tooltip theo từng tài khoản
             UpdateTrayIcon();

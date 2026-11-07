@@ -167,6 +167,8 @@
             <StackPanel>
                 <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="12"/>
                 <TextBlock Text="{Binding PlatformName}" Foreground="{DynamicResource Brush.Text.Secondary}" FontSize="11"/>
+                <TextBlock Text="⏸ Đang tạm dừng — không nhận tin mới" Foreground="{DynamicResource Brush.Warning.Text}" FontSize="11"
+                           Visibility="{Binding IsPaused, Converter={StaticResource BoolToVis}}"/>
                 <TextBlock Text="{Binding TagCategory}" Foreground="{DynamicResource Brush.Accent.TextSoft}" FontSize="11"/>
                 <TextBlock Text="{Binding ProxyDisplayText}" Foreground="{DynamicResource Brush.Text.Secondary}" FontSize="11"/>
                 <TextBlock Text="🔕 Đã tắt thông báo" Foreground="{DynamicResource Brush.Warning.Text}" FontSize="11"
@@ -321,6 +323,10 @@
                                                     <Style TargetType="TextBlock">
                                                         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Tertiary}"/>
                                                         <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsPaused}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}"/>
+                                                                <Setter Property="FontStyle" Value="Italic"/>
+                                                            </DataTrigger>
                                                             <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                                                 <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/>
                                                                 <Setter Property="FontWeight" Value="SemiBold"/>

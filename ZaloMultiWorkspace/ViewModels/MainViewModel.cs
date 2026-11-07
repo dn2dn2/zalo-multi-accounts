@@ -914,6 +914,24 @@ namespace ZaloMultiWorkspace.ViewModels
             }
         }
 
+        /// <summary>
+        /// Khởi chạy lần lượt các tài khoản bật "Tự khởi chạy khi mở ứng dụng".
+        /// Cách nhau một chút để không làm máy đứng khi có nhiều tài khoản.
+        /// </summary>
+        public async Task StartAutoLaunchAccountsAsync()
+        {
+            foreach (var acc in Accounts.Where(a => a.AutoStartOnLaunch).ToList())
+            {
+                if (SessionManager.IsSessionRunning(acc.Id))
+                    continue;
+                await SessionManager.StartOrWakeSessionAsync(acc, makeVisible: acc.IsSelected);
+                RefreshStatusMetrics();
+                await Task.Delay(800);
+            }
+            OnPropertyChanged(nameof(IsSelectedSessionRunning));
+            OnPropertyChanged(nameof(ShowPlaceholderOverlay));
+        }
+
         public void RefreshStatusMetrics()
         {
             int totalUnread = Accounts.Sum(a => a.UnreadCount);

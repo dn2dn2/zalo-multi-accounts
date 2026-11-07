@@ -51,6 +51,9 @@ namespace ZaloMultiWorkspace.ViewModels
 
         public Action<bool>? CloseAction { get; set; }
 
+        [ObservableProperty]
+        private bool _autoStartOnLaunch = true;
+
         /// <summary>Nền tảng chỉ chọn được khi thêm mới; dữ liệu đăng nhập không chuyển được giữa các nền tảng</summary>
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsZaloSelected))]
@@ -92,7 +95,8 @@ namespace ZaloMultiWorkspace.ViewModels
             _proxyPortText = Profile.ProxyPort > 0 ? Profile.ProxyPort.ToString() : string.Empty;
             _proxyUser = Profile.ProxyUser;
             _proxyPass = Profile.ProxyPass;
-            _autoHibernateMinutes = Profile.AutoHibernateMinutes > 0 ? Profile.AutoHibernateMinutes : 30;
+            _autoHibernateMinutes = Math.Max(0, Profile.AutoHibernateMinutes);
+            _autoStartOnLaunch = Profile.AutoStartOnLaunch;
         }
 
         private void ApplyToProfile(ZaloAccountProfile target)
@@ -112,7 +116,8 @@ namespace ZaloMultiWorkspace.ViewModels
                 : string.Empty;
             target.ProxyUser = ProxyUser?.Trim() ?? string.Empty;
             target.ProxyPass = ProxyPass ?? string.Empty;
-            target.AutoHibernateMinutes = AutoHibernateMinutes > 0 ? AutoHibernateMinutes : 30;
+            target.AutoHibernateMinutes = Math.Max(0, AutoHibernateMinutes);
+            target.AutoStartOnLaunch = AutoStartOnLaunch;
         }
 
         [RelayCommand]

@@ -54,6 +54,22 @@ namespace ZaloMultiWorkspace.Services
 
             var settingsCol = db.GetCollection<AppSettings>("settings");
             var settings = settingsCol.FindById(1) ?? new AppSettings();
+
+            // Một lần: tài khoản còn để mặc định cũ (tự tạm dừng sau 30 phút) chuyển sang không tự tạm dừng,
+            // vì tài khoản tạm dừng không nhận được tin nhắn mới
+            if (!settings.AutoHibernateDefaultMigrated)
+            {
+                foreach (var doc in rawAccounts.FindAll().ToList())
+                {
+                    if (doc.TryGetValue("AutoHibernateMinutes", out var mins) && mins.IsInt32 && mins.AsInt32 == 30)
+                    {
+                        doc["AutoHibernateMinutes"] = 0;
+                        rawAccounts.Update(doc);
+                    }
+                }
+                settings.AutoHibernateDefaultMigrated = true;
+                settingsCol.Upsert(settings);
+            }
             if (string.IsNullOrEmpty(settings.MasterPinHash))
             {
                 string pin = string.IsNullOrWhiteSpace(settings.MasterPin) ? AppSettings.DefaultPin : settings.MasterPin.Trim();
@@ -92,7 +108,7 @@ namespace ZaloMultiWorkspace.Services
                     ProxyAddress = "",
                     ProxyHost = "",
                     ProxyPort = 0,
-                    AutoHibernateMinutes = 30,
+                    AutoHibernateMinutes = 0,
                     SortOrder = 1
                 };
                 var acc2 = new ZaloAccountProfile
@@ -105,7 +121,7 @@ namespace ZaloMultiWorkspace.Services
                     ProxyAddress = "",
                     ProxyHost = "",
                     ProxyPort = 0,
-                    AutoHibernateMinutes = 20,
+                    AutoHibernateMinutes = 0,
                     SortOrder = 2
                 };
                 var acc3 = new ZaloAccountProfile
@@ -118,7 +134,7 @@ namespace ZaloMultiWorkspace.Services
                     ProxyAddress = "",
                     ProxyHost = "",
                     ProxyPort = 0,
-                    AutoHibernateMinutes = 15,
+                    AutoHibernateMinutes = 0,
                     SortOrder = 3
                 };
                 accounts.InsertBulk(new[] { acc1, acc2, acc3 });

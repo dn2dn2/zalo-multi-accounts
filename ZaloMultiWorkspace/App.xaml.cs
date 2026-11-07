@@ -38,7 +38,8 @@ namespace ZaloMultiWorkspace
             // Phần 5: Dọn dẹp các tiến trình msedgewebview2.exe mồ côi khi khởi động
             WebViewSessionManager.CleanupOrphanProcesses();
 
-            var mainWindow = new MainWindow();
+            bool startMinimized = Array.Exists(e.Args, a => string.Equals(a, StartupService.MinimizedArg, StringComparison.OrdinalIgnoreCase));
+            var mainWindow = new MainWindow { StartHiddenInTray = startMinimized };
             MainWindow = mainWindow;
             mainWindow.Show();
 
