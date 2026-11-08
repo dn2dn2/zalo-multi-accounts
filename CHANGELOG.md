@@ -3,6 +3,33 @@
 Mọi thay đổi đáng chú ý của **Chat Workspace Pro** (trước đây là Zalo Multi-Workspace Pro) được ghi tại đây.
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/), phiên bản theo [Semantic Versioning](https://semver.org/lang/vi/).
 
+## [1.1.0] - 2026-11-08
+
+### Thêm mới
+
+**Chụp màn hình**
+- Công cụ chụp màn hình giống Zalo PC:
+  - Kéo chọn vùng, hoặc nhấp một cái để chụp cả màn hình. Kéo 8 chấm xanh để chỉnh vùng, kéo phần giữa để di chuyển.
+  - Công cụ vẽ: khung chữ nhật, mũi tên, bút vẽ, chữ, **làm mờ** (che số điện thoại, thông tin nhạy cảm), 6 màu và 3 độ dày nét, hoàn tác (Ctrl+Z).
+  - Sau khi chụp: **Lưu thành file** (Ctrl+S), **Sao chép** (Ctrl+C hoặc nhấp đúp), **Gửi vào khung chat** (Enter). Gửi vào khung chat sẽ dán ảnh vào ô chat của tài khoản đang mở, bạn tự bấm Gửi.
+- Hai chế độ:
+  - **Chụp màn hình** (Ctrl+Alt+A): chụp cả cửa sổ ứng dụng.
+  - **Chụp ẩn ứng dụng** (Ctrl+Alt+S): ứng dụng tự ẩn rồi mới chụp, chụp xong hiện lại đúng chỗ cũ.
+- Mở công cụ chụp bằng nút máy ảnh trên thanh công cụ (mũi tên ▾ để chọn chế độ), menu chuột phải ở icon khay, hoặc phím tắt. Phím tắt dùng được cả khi ứng dụng đang ẩn dưới khay.
+
+**Phím tắt**
+- Mục **Phím tắt** trong Cài đặt › Chung, đổi được phím của 5 chức năng: Chụp màn hình, Chụp ẩn ứng dụng, Hiện / ẩn ứng dụng (mới), Dịch đoạn đã chọn, Tải lại tài khoản.
+- Bấm vào ô rồi nhấn tổ hợp mới. Esc để hủy, Backspace để tắt phím, nút ↺ để khôi phục mặc định.
+- Báo khi phím trùng với chức năng khác hoặc đang bị chương trình khác giữ (vd Zalo PC). Khi mở ứng dụng mà phím bị trùng thì chỉ báo một lần.
+- Đổi phím có tác dụng ngay, không cần khởi động lại.
+
+**Khác**
+- Chọn thư mục lưu ảnh chụp trong Cài đặt › Chung (mặc định `Ảnh\ChatWorkspacePro`).
+- Menu hiện icon và phím tắt.
+
+### Thay đổi
+- **Link trong tin nhắn mở bằng trình duyệt mặc định của Windows** (Chrome, Edge, Cốc Cốc…) thay vì cửa sổ nhỏ của ứng dụng, cho cả Zalo và Telegram. Trang của chính Zalo/Telegram (vd xem trước file) vẫn mở như cũ.
+
 ## [1.0.1] - 2026-11-08
 
 ### Sửa lỗi
@@ -97,6 +124,7 @@ Phiên bản phát hành đầu tiên dưới tên **Chat Workspace Pro**.
 - Quản lý nhiều tài khoản Zalo, mỗi tài khoản có dữ liệu đăng nhập và proxy riêng.
 - Tin nhắn mẫu, ghi chú khách hàng, khóa ứng dụng bằng mã PIN, sao lưu và khôi phục dữ liệu.
 
-[1.0.1]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.0.0...HEAD
+[1.1.0]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.0.1...v1.1.0
+[1.0.1]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/dn2dn2/zalo-multi-accounts/compare/86fb9d3...v1.0.0
 [0.1.0]: https://github.com/dn2dn2/zalo-multi-accounts/commit/86fb9d3
