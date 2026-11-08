@@ -282,6 +282,9 @@
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu Background="{DynamicResource Brush.Bg.Panel}" Foreground="{DynamicResource Brush.Text.Primary}" BorderBrush="{DynamicResource Brush.Border.Subtle}">
                     <MenuItem Header="Mở ứng dụng" Click="TrayOpen_Click"/>
+                    <MenuItem x:Name="TrayCaptureItem" Header="Chụp màn hình" Click="TrayCapture_Click"/>
+                    <MenuItem x:Name="TrayCaptureHiddenItem" Header="Chụp ẩn ứng dụng" Click="TrayCaptureHidden_Click"/>
+                    <Separator Background="{DynamicResource Brush.Border.Subtle}"/>
                     <MenuItem Header="Khóa ngay" Click="TrayLock_Click"/>
                     <MenuItem Header="Tạm dừng tất cả" Click="TrayHibernateAll_Click"/>
                     <Separator Background="{DynamicResource Brush.Border.Subtle}"/>
@@ -620,12 +623,33 @@
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <!-- Chụp màn hình: bấm = chụp, mũi tên = chọn chụp ẩn ứng dụng -->
+                            <Button x:Name="CaptureButton" Content="&#xE722;" Style="{StaticResource IconButtonStyle}" Click="CaptureButton_Click"
+                                    Margin="2,0,0,0" AutomationProperties.Name="Chụp màn hình"/>
+                            <Button x:Name="CaptureMenuButton" Content="&#xE70D;" Style="{StaticResource IconButtonStyle}" Width="16" FontSize="9"
+                                    Margin="0,0,2,0" Click="CaptureMenuButton_Click" ToolTip="Chọn kiểu chụp" AutomationProperties.Name="Chọn kiểu chụp">
+                                <Button.ContextMenu>
+                                    <ContextMenu x:Name="CaptureMenu" FontFamily="Segoe UI" FontSize="12" Background="{DynamicResource Brush.Bg.Panel}" Foreground="{DynamicResource Brush.Text.Primary}"
+                                                 BorderBrush="{DynamicResource Brush.Border.Subtle}">
+                                        <MenuItem x:Name="CaptureMenuNormal" Header="Chụp màn hình" Click="CaptureNormal_Click">
+                                            <MenuItem.Icon>
+                                                <TextBlock Text="&#xE722;" FontFamily="{StaticResource IconFont}" FontSize="14"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem x:Name="CaptureMenuHidden" Header="Chụp ẩn ứng dụng" Click="CaptureHidden_Click">
+                                            <MenuItem.Icon>
+                                                <TextBlock Text="&#xED1A;" FontFamily="{StaticResource IconFont}" FontSize="14"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                            </Button>
                             <Button Content="&#xE72C;" Command="{Binding ReloadCurrentAccountCommand}" Style="{StaticResource IconButtonStyle}"
                                     AutomationProperties.Name="Tải lại">
                                 <Button.ToolTip>
                                     <StackPanel>
                                         <TextBlock Text="Tải lại trang" FontWeight="SemiBold"/>
-                                        <TextBlock Text="F5" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                                        <TextBlock Text="{Binding ReloadHotkeyText}" Foreground="{DynamicResource Brush.Text.Muted}"/>
                                     </StackPanel>
                                 </Button.ToolTip>
                             </Button>
@@ -741,7 +765,7 @@
                                         Style="{StaticResource DrawerTabButtonStyle}" Tag="{Binding IsCustomerNotesTabActive}"/>
                                 <Button Content="Dịch" Command="{Binding SwitchToTranslateTabCommand}"
                                         Style="{StaticResource DrawerTabButtonStyle}" Tag="{Binding IsTranslateTabActive}"
-                                        ToolTip="Dịch tin nhắn (bôi đen + Ctrl+Shift+D)"/>
+                                        ToolTip="{Binding TranslateTabTooltip}"/>
                             </StackPanel>
                             <Button Content="+ Thêm" HorizontalAlignment="Right" Click="AddQuickReply_Click"
                                     Visibility="{Binding IsQuickReplyTabActive, Converter={StaticResource BoolToVis}}"
@@ -859,12 +883,12 @@
                                     <DockPanel Margin="0,0,0,6">
                                         <Button DockPanel.Dock="Right" Content="&#xE8B3;" Style="{StaticResource CardIconButtonStyle}"
                                                 Command="{Binding GrabSelectionAndTranslateCommand}"
-                                                ToolTip="Lấy đoạn đang bôi đen trong khung chat (Ctrl+Shift+D)"
+                                                ToolTip="{Binding TranslateGrabTooltip}"
                                                 AutomationProperties.Name="Lấy đoạn đang bôi đen"/>
                                         <TextBlock Text="Dịch đoạn đã chọn" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
                                                    Foreground="{DynamicResource Brush.Text.Primary}"/>
                                     </DockPanel>
-                                    <TextBlock Text="Bôi đen chữ trong khung chat rồi bấm Ctrl+Shift+D, hoặc dán vào ô dưới." FontSize="10.5"
+                                    <TextBlock Text="{Binding TranslateReadHint}" FontSize="10.5"
                                                Foreground="{DynamicResource Brush.Text.Muted}" TextWrapping="Wrap" Margin="0,0,0,6"/>
                                     <TextBox Text="{Binding ReadText, UpdateSourceTrigger=PropertyChanged}" Height="54" TextWrapping="Wrap"
                                              AcceptsReturn="True" VerticalScrollBarVisibility="Auto" FontSize="12"

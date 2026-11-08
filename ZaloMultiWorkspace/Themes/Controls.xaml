@@ -240,9 +240,22 @@
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
                     <Border x:Name="bd" Background="Transparent" CornerRadius="5" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center"/>
+                        <DockPanel>
+                            <!-- Icon (nếu có) bên trái, phím tắt (nếu có) mờ bên phải -->
+                            <ContentPresenter x:Name="icon" DockPanel.Dock="Left" ContentSource="Icon" Width="18" Margin="0,0,8,0"
+                                              VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="gesture" DockPanel.Dock="Right" Text="{TemplateBinding InputGestureText}" Margin="24,0,0,0"
+                                       VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                            <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center"/>
+                        </DockPanel>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="Icon" Value="{x:Null}">
+                            <Setter TargetName="icon" Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
+                        <Trigger Property="InputGestureText" Value="">
+                            <Setter TargetName="gesture" Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.Hover.Overlay}"/>
                         </Trigger>

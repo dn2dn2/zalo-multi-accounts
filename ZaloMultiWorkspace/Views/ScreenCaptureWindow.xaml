@@ -1,0 +1,167 @@
+<Window x:Class="ZaloMultiWorkspace.Views.ScreenCaptureWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Chụp màn hình"
+        WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
+        Background="Black" Cursor="Cross" UseLayoutRounding="True"
+        WindowStartupLocation="Manual">
+    <Window.Resources>
+        <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+        <!-- Thanh công cụ chụp luôn tối (giống công cụ chụp của Zalo PC), không theo giao diện sáng/tối -->
+        <Style x:Key="CapToolButton" TargetType="Button">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Margin" Value="1,0"/>
+            <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Foreground" Value="#E4E4E7"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="200"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#33333D"/>
+                            </Trigger>
+                            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="on">
+                                <Setter TargetName="bd" Property="Background" Value="#0068FF"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CapSep" TargetType="Border">
+            <Setter Property="Width" Value="1"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Margin" Value="4,0"/>
+            <Setter Property="Background" Value="#3F3F46"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="SwatchButton" TargetType="Button">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Ellipse x:Name="ring" Stroke="Transparent" StrokeThickness="2"/>
+                            <Ellipse Margin="4" Fill="{TemplateBinding Background}"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="on">
+                                <Setter TargetName="ring" Property="Stroke" Value="White"/>
+                            </DataTrigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ring" Property="Stroke" Value="#A1A1AA"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="#0B0B0D"/>
+            <Setter Property="Foreground" Value="#F4F4F6"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="7,4"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid x:Name="Root" MouseLeftButtonDown="Root_MouseLeftButtonDown" MouseMove="Root_MouseMove"
+          MouseLeftButtonUp="Root_MouseLeftButtonUp" MouseRightButtonUp="Root_MouseRightButtonUp">
+        <!-- Lớp ảnh: toạ độ bên trong Surface là pixel của ảnh chụp -->
+        <Viewbox Stretch="Fill">
+            <Grid x:Name="Surface">
+                <Image x:Name="ScreenImage" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                <Canvas x:Name="AnnotCanvas" Background="Transparent"/>
+                <Path x:Name="DimPath" Fill="#73000000" IsHitTestVisible="False"/>
+                <Canvas x:Name="SelCanvas" IsHitTestVisible="False">
+                    <Rectangle x:Name="SelBorder" Stroke="#0068FF" Visibility="Collapsed"/>
+                    <Rectangle x:Name="DraftRect" Stroke="White" Visibility="Collapsed"/>
+                </Canvas>
+            </Grid>
+        </Viewbox>
+
+        <!-- Lớp giao diện: toạ độ theo cửa sổ -->
+        <Canvas x:Name="UiCanvas">
+            <Border x:Name="HintBox" Background="#E60B0B0D" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="6" Padding="12,7"
+                    IsHitTestVisible="False">
+                <TextBlock Foreground="#F4F4F6" FontSize="13"
+                           Text="Kéo chuột để chọn vùng cần chụp  ·  Nhấp chuột để chụp cả màn hình  ·  Esc để hủy"/>
+            </Border>
+
+            <Border x:Name="SizeLabel" Background="#E60B0B0D" CornerRadius="4" Padding="6,2" IsHitTestVisible="False" Visibility="Collapsed">
+                <TextBlock x:Name="SizeText" Foreground="White" FontSize="11.5"/>
+            </Border>
+
+            <Border x:Name="Toolbar" Background="#202024" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="8" Padding="4"
+                    Visibility="Collapsed" Cursor="Arrow">
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="ToolRect" Content="&#xE739;" Style="{StaticResource CapToolButton}" Click="Tool_Click"
+                            ToolTip="Khung chữ nhật" AutomationProperties.Name="Khung chữ nhật"/>
+                    <Button x:Name="ToolArrow" Style="{StaticResource CapToolButton}" Click="Tool_Click"
+                            ToolTip="Mũi tên" AutomationProperties.Name="Mũi tên">
+                        <TextBlock Text="&#xE72A;" RenderTransformOrigin="0.5,0.5">
+                            <TextBlock.RenderTransform>
+                                <RotateTransform Angle="-45"/>
+                            </TextBlock.RenderTransform>
+                        </TextBlock>
+                    </Button>
+                    <Button x:Name="ToolPen" Content="&#xE70F;" Style="{StaticResource CapToolButton}" Click="Tool_Click"
+                            ToolTip="Bút vẽ" AutomationProperties.Name="Bút vẽ"/>
+                    <Button x:Name="ToolText" Content="&#xE8D2;" Style="{StaticResource CapToolButton}" Click="Tool_Click"
+                            ToolTip="Chữ" AutomationProperties.Name="Chữ"/>
+                    <Button x:Name="ToolMosaic" Content="▦" FontFamily="Segoe UI Symbol" FontSize="18" Style="{StaticResource CapToolButton}" Click="Tool_Click"
+                            ToolTip="Làm mờ (che thông tin)" AutomationProperties.Name="Làm mờ"/>
+                    <Button x:Name="ColorButton" Style="{StaticResource CapToolButton}" Click="ColorButton_Click"
+                            ToolTip="Màu và độ dày nét" AutomationProperties.Name="Màu">
+                        <Ellipse x:Name="ColorDot" Width="15" Height="15" Stroke="White" StrokeThickness="2" Fill="#E5293E"/>
+                    </Button>
+                    <Button Content="&#xE7A7;" Style="{StaticResource CapToolButton}" Click="Undo_Click"
+                            ToolTip="Hoàn tác (Ctrl+Z)" AutomationProperties.Name="Hoàn tác"/>
+                    <Border Style="{StaticResource CapSep}"/>
+                    <Button Content="&#xE711;" Style="{StaticResource CapToolButton}" Foreground="#F87171" Click="Cancel_Click"
+                            ToolTip="Hủy (Esc)" AutomationProperties.Name="Hủy chụp"/>
+                    <Button Content="&#xE74E;" Style="{StaticResource CapToolButton}" Click="Save_Click"
+                            ToolTip="Lưu thành file (Ctrl+S)" AutomationProperties.Name="Lưu thành file"/>
+                    <Button Content="&#xE8C8;" Style="{StaticResource CapToolButton}" Click="Copy_Click"
+                            ToolTip="Sao chép (Ctrl+C hoặc nhấp đúp)" AutomationProperties.Name="Sao chép ảnh"/>
+                    <Button x:Name="SendButton" Content="&#xE724;" Style="{StaticResource CapToolButton}" Foreground="#4ADE80" Click="Send_Click"
+                            AutomationProperties.Name="Gửi vào khung chat">
+                        <Button.ToolTip>
+                            <StackPanel>
+                                <TextBlock Text="Gửi vào khung chat (Enter)" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="SendHintText" Foreground="#A1A1AA" Text="Dán ảnh vào ô chat của tài khoản đang mở"/>
+                            </StackPanel>
+                        </Button.ToolTip>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <Border x:Name="ColorPopup" Background="#202024" BorderBrush="#3F3F46" BorderThickness="1" CornerRadius="8" Padding="6"
+                    Visibility="Collapsed" Cursor="Arrow">
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel x:Name="WidthPanel" Orientation="Horizontal"/>
+                    <Border Style="{StaticResource CapSep}"/>
+                    <StackPanel x:Name="SwatchPanel" Orientation="Horizontal"/>
+                </StackPanel>
+            </Border>
+        </Canvas>
+    </Grid>
+</Window>

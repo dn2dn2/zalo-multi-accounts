@@ -1,6 +1,8 @@
 using System;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -18,6 +20,8 @@ namespace ZaloMultiWorkspace.Views
         /// <summary>Mở cùng Windows: chạy ngầm ở khay, không hiện cửa sổ</summary>
         public bool StartHiddenInTray { get; set; }
         private readonly Services.TrayBadgeService _trayBadge = new();
+        public Services.GlobalHotkeyService GlobalHotkeys { get; } = new();
+        private bool _capturing;
         private bool _isExplicitExit = false;
 
         public MainWindow()
@@ -47,7 +51,10 @@ namespace ZaloMultiWorkspace.Views
             {
                 if (StartHiddenInTray)
                     Opacity = 0; // tránh nháy cửa sổ trước khi ẩn xuống khay
+                GlobalHotkeys.Attach(this);
+                ApplyHotkeys(notifyConflicts: true);
             };
+            GlobalHotkeys.HotkeyPressed += OnGlobalHotkey;
 
             // Icon khay: chấm đỏ khi có tin chưa đọc + tooltip theo từng tài khoản
             UpdateTrayIcon();
@@ -136,8 +143,9 @@ namespace ZaloMultiWorkspace.Views
         /// </summary>
         private async void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            // F5: tải lại trang Zalo của tài khoản đang chọn (khi WebView2 đang focus, nó tự xử lý F5)
-            if (e.Key == Key.F5 && Keyboard.Modifiers == ModifierKeys.None && !ViewModel.IsLocked)
+            var settings = ViewModel.DatabaseService.GetSettings();
+            // Tải lại (mặc định F5) trang chat của tài khoản đang chọn (khi WebView2 đang focus, nó tự xử lý F5)
+            if (settings.GetHotkey(HotkeyAction.Reload).Matches(e) && !ViewModel.IsLocked)
             {
                 if (ViewModel.ReloadCurrentAccountCommand.CanExecute(null))
                     ViewModel.ReloadCurrentAccountCommand.Execute(null);
@@ -145,7 +153,7 @@ namespace ZaloMultiWorkspace.Views
                 return;
             }
 
-            if (e.Key == Key.D && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && !ViewModel.IsLocked)
+            if (settings.GetHotkey(HotkeyAction.Translate).Matches(e) && !ViewModel.IsLocked)
             {
                 e.Handled = true;
                 await ViewModel.GrabSelectionAndTranslateAsync();
@@ -418,6 +426,7 @@ namespace ZaloMultiWorkspace.Views
             else
             {
                 ViewModel.SessionManager.HibernateAllSessions(ViewModel.Accounts);
+                GlobalHotkeys.Dispose();
                 TrayIcon.Dispose();
                 _trayBadge.Dispose();
             }
@@ -449,6 +458,174 @@ namespace ZaloMultiWorkspace.Views
         {
             _isExplicitExit = true;
             Close();
+        }
+
+        // ================= Phím tắt =================
+        /// <summary>
+        /// Áp phím tắt theo cài đặt: đăng ký phím toàn hệ thống, cập nhật phím Dịch trong trang chat và tooltip.
+        /// Trả về các chức năng không đăng ký được (bị chương trình khác giữ phím).
+        /// </summary>
+        public System.Collections.Generic.List<HotkeyAction> ApplyHotkeys(bool notifyConflicts = false)
+        {
+            var settings = ViewModel.DatabaseService.GetSettings();
+            var failed = GlobalHotkeys.Apply(settings);
+
+            var translate = settings.GetHotkey(HotkeyAction.Translate);
+            ViewModel.JsBridgeService.TranslateHotkey = translate;
+            foreach (var wv in ViewModel.SessionManager.ActiveWebViews.ToList())
+                _ = ViewModel.JsBridgeService.ApplyTranslateHotkeyAsync(wv);
+            ViewModel.TranslateHotkeyText = translate.ToString();
+            ViewModel.ReloadHotkeyText = settings.GetHotkey(HotkeyAction.Reload).ToString();
+
+            string cap = settings.GetHotkey(HotkeyAction.Capture).ToString();
+            string capHidden = settings.GetHotkey(HotkeyAction.CaptureHidden).ToString();
+            CaptureMenuNormal.InputGestureText = failed.Contains(HotkeyAction.Capture) ? "" : cap;
+            CaptureMenuHidden.InputGestureText = failed.Contains(HotkeyAction.CaptureHidden) ? "" : capHidden;
+            TrayCaptureItem.InputGestureText = CaptureMenuNormal.InputGestureText;
+            TrayCaptureHiddenItem.InputGestureText = CaptureMenuHidden.InputGestureText;
+
+
+            var tip = new StackPanel();
+            tip.Children.Add(new TextBlock { Text = "Chụp màn hình", FontWeight = FontWeights.SemiBold });
+            string line1 = string.IsNullOrEmpty(cap) ? "Chưa đặt phím tắt"
+                : failed.Contains(HotkeyAction.Capture) ? $"{cap} (đang bị chương trình khác dùng)" : cap;
+            var t1 = new TextBlock { Text = line1 };
+            var t2 = new TextBlock { Text = "Bấm mũi tên bên cạnh để chụp ẩn ứng dụng" };
+            t1.SetResourceReference(TextBlock.ForegroundProperty, "Brush.Text.Muted");
+            t2.SetResourceReference(TextBlock.ForegroundProperty, "Brush.Text.Muted");
+            tip.Children.Add(t1);
+            tip.Children.Add(t2);
+            CaptureButton.ToolTip = tip;
+
+            if (notifyConflicts)
+            {
+                // Chỉ báo khi tình trạng trùng phím thay đổi, tránh lần nào mở máy cũng báo
+                string signature = string.Join(",", failed.Select(a => $"{a}={settings.GetHotkey(a)}"));
+                if (signature != settings.HotkeyConflictNotified)
+                {
+                    settings.HotkeyConflictNotified = signature;
+                    ViewModel.DatabaseService.SaveSettings(settings);
+                    if (failed.Count > 0)
+                    {
+                        string keys = string.Join(", ", failed.Select(a => settings.GetHotkey(a).ToString()));
+                        TrayIcon.ShowBalloonTip("Phím tắt đang bị trùng",
+                            $"{keys} đang được chương trình khác dùng (vd Zalo PC). Đổi phím trong Cài đặt > Chung > Phím tắt.",
+                            BalloonIcon.Warning);
+                    }
+                }
+            }
+            return failed;
+        }
+
+        private void OnGlobalHotkey(HotkeyAction action)
+        {
+            switch (action)
+            {
+                case HotkeyAction.Capture:
+                    _ = StartCaptureAsync(hideApp: false, delayMs: 0);
+                    break;
+                case HotkeyAction.CaptureHidden:
+                    _ = StartCaptureAsync(hideApp: true, delayMs: 0);
+                    break;
+                case HotkeyAction.ToggleApp:
+                    if (IsVisible && WindowState != WindowState.Minimized && IsActive)
+                        Hide();
+                    else
+                        RestoreFromTray();
+                    break;
+            }
+        }
+
+        // ================= Chụp màn hình =================
+        private void CaptureButton_Click(object sender, RoutedEventArgs e) => _ = StartCaptureAsync(false, 120);
+
+        private void CaptureMenuButton_Click(object sender, RoutedEventArgs e)
+        {
+            CaptureMenu.PlacementTarget = CaptureButton;
+            CaptureMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            CaptureMenu.IsOpen = true;
+        }
+
+        private void CaptureNormal_Click(object sender, RoutedEventArgs e) => _ = StartCaptureAsync(false, 250);
+        private void CaptureHidden_Click(object sender, RoutedEventArgs e) => _ = StartCaptureAsync(true, 0);
+        private void TrayCapture_Click(object sender, RoutedEventArgs e) => _ = StartCaptureAsync(false, 250);
+        private void TrayCaptureHidden_Click(object sender, RoutedEventArgs e) => _ = StartCaptureAsync(true, 250);
+
+        /// <summary>
+        /// Chụp màn hình. hideApp = ẩn cửa sổ ứng dụng trước khi chụp rồi hiện lại đúng chỗ cũ.
+        /// delayMs: chờ menu / tooltip đóng hẳn để không dính vào ảnh.
+        /// </summary>
+        public async Task StartCaptureAsync(bool hideApp, int delayMs)
+        {
+            if (_capturing)
+                return;
+            _capturing = true;
+            bool wasShown = IsVisible && WindowState != WindowState.Minimized;
+            bool hidden = false;
+            try
+            {
+                if (hideApp && wasShown)
+                {
+                    Hide();
+                    hidden = true;
+                    delayMs = Math.Max(delayMs, 300); // chờ hiệu ứng ẩn cửa sổ của Windows
+                }
+                if (delayMs > 0)
+                    await Task.Delay(delayMs);
+
+                var settings = ViewModel.DatabaseService.GetSettings();
+                var acc = ViewModel.SelectedAccount;
+                string sendHint = ViewModel.IsLocked
+                    ? "Ứng dụng đang khóa: ảnh sẽ được chép vào bộ nhớ tạm"
+                    : acc != null ? $"Dán ảnh vào ô chat của {acc.DisplayName} ({acc.PlatformName})"
+                    : "Chưa chọn tài khoản: ảnh sẽ được chép vào bộ nhớ tạm";
+                var win = ScreenCaptureWindow.Create(settings.GetScreenshotFolder(), sendHint);
+                if (win == null)
+                {
+                    TrayIcon.ShowBalloonTip("Chụp màn hình", "Không chụp được màn hình.", BalloonIcon.Error);
+                    return;
+                }
+                win.ShowDialog();
+
+                switch (win.Result)
+                {
+                    case CaptureResult.Saved:
+                        TrayIcon.ShowBalloonTip("Đã lưu ảnh chụp", win.SavedPath ?? string.Empty, BalloonIcon.Info);
+                        break;
+                    case CaptureResult.SendToChat when win.ResultImage != null:
+                        if (ViewModel.IsLocked || acc == null)
+                        {
+                            ScreenCaptureWindow.SetClipboardImage(win.ResultImage);
+                            TrayIcon.ShowBalloonTip("Chụp màn hình",
+                                ViewModel.IsLocked ? "Ứng dụng đang khóa. Ảnh đã chép vào bộ nhớ tạm." : "Chưa chọn tài khoản. Ảnh đã chép vào bộ nhớ tạm.",
+                                BalloonIcon.Info);
+                            break;
+                        }
+                        RestoreFromTray();
+                        hidden = false;
+                        await Task.Delay(150);
+                        if (!await ViewModel.PasteImageToCurrentChatAsync(win.ResultImage))
+                        {
+                            TrayIcon.ShowBalloonTip("Chụp màn hình",
+                                "Chưa tìm thấy ô chat (hãy mở một cuộc trò chuyện). Ảnh đã chép vào bộ nhớ tạm, bấm Ctrl+V để dán.",
+                                BalloonIcon.Info);
+                        }
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                TrayIcon.ShowBalloonTip("Chụp màn hình", "Lỗi: " + ex.Message, BalloonIcon.Error);
+            }
+            finally
+            {
+                if (hidden)
+                {
+                    Show();
+                    Activate();
+                }
+                _capturing = false;
+            }
         }
 
         public void RestoreFromTray()

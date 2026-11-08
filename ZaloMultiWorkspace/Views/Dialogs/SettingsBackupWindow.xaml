@@ -213,6 +213,27 @@
                             </StackPanel>
                         </DockPanel>
                     </Border>
+
+                    <TextBlock Text="CHỤP MÀN HÌNH" Style="{StaticResource SectionTitle}" Margin="0,18,0,10"/>
+                    <Border Style="{StaticResource SettingRow}">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="Chọn…" Width="70" Height="30" Click="ChooseScreenshotFolder_Click" AutomationProperties.Name="Chọn thư mục lưu ảnh"/>
+                                <Button Content="&#xE8DA;" FontFamily="{StaticResource IconFont}" FontSize="14" Padding="0" Width="32" Height="30" Margin="6,0,0,0"
+                                        Click="OpenScreenshotFolder_Click" ToolTip="Mở thư mục" AutomationProperties.Name="Mở thư mục lưu ảnh"/>
+                            </StackPanel>
+                            <TextBlock Text="&#xE722;" Style="{StaticResource RowIcon}"/>
+                            <StackPanel Margin="0,0,10,0">
+                                <TextBlock Text="Thư mục lưu ảnh" Style="{StaticResource RowTitle}"/>
+                                <TextBlock x:Name="ScreenshotFolderText" Style="{StaticResource RowHint}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <TextBlock Text="PHÍM TẮT" Style="{StaticResource SectionTitle}" Margin="0,18,0,4"/>
+                    <TextBlock Style="{StaticResource RowHint}" Margin="0,0,0,6"
+                               Text="Bấm vào ô rồi nhấn tổ hợp phím mới. Esc để hủy, Backspace để tắt phím tắt. Phím toàn hệ thống dùng được cả khi ứng dụng ẩn dưới khay."/>
+                    <StackPanel x:Name="HotkeyRows"/>
                 </StackPanel>
 
                 <!-- ===== TAB THÔNG BÁO ===== -->

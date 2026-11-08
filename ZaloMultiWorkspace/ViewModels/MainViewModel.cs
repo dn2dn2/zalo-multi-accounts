@@ -268,6 +268,40 @@ namespace ZaloMultiWorkspace.ViewModels
 
         public event Action<string, string>? OnTrayBalloonNotificationRequested;
 
+        // --- Phím tắt (hiển thị trong tooltip, đổi được trong Cài đặt) ---
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(TranslateTabTooltip), nameof(TranslateGrabTooltip), nameof(TranslateReadHint))]
+        private string _translateHotkeyText = "Ctrl+Shift+D";
+
+        [ObservableProperty]
+        private string _reloadHotkeyText = "F5";
+
+        public string TranslateTabTooltip => string.IsNullOrEmpty(TranslateHotkeyText)
+            ? "Dịch tin nhắn" : $"Dịch tin nhắn (bôi đen + {TranslateHotkeyText})";
+        public string TranslateGrabTooltip => string.IsNullOrEmpty(TranslateHotkeyText)
+            ? "Lấy đoạn đang bôi đen trong khung chat" : $"Lấy đoạn đang bôi đen trong khung chat ({TranslateHotkeyText})";
+        public string TranslateReadHint => string.IsNullOrEmpty(TranslateHotkeyText)
+            ? "Bôi đen chữ trong khung chat rồi bấm nút bên phải, hoặc dán vào ô dưới."
+            : $"Bôi đen chữ trong khung chat rồi bấm {TranslateHotkeyText}, hoặc dán vào ô dưới.";
+
+        /// <summary>Dán ảnh (ảnh chụp màn hình) vào ô chat của tài khoản đang mở. Người dùng tự bấm Gửi.</summary>
+        public async Task<bool> PasteImageToCurrentChatAsync(System.Windows.Media.Imaging.BitmapSource image)
+        {
+            if (SelectedAccount == null)
+                return false;
+            var webView = SessionManager.GetWebView(SelectedAccount.Id);
+            if (webView == null)
+            {
+                await StartOrWakeSelectedAccountAsync();
+                webView = SessionManager.GetWebView(SelectedAccount.Id);
+                if (webView != null)
+                    await Task.Delay(1500); // chờ trang chat tải xong ô nhập
+            }
+            if (webView == null)
+                return false;
+            return await JsBridgeService.PasteImageAsync(webView, SelectedAccount.Platform, image);
+        }
+
         public MainViewModel()
         {
             DatabaseService = new DatabaseService();

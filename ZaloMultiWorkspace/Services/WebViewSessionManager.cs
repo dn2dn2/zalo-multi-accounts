@@ -164,6 +164,90 @@ namespace ZaloMultiWorkspace.Services
 
         public int RunningCount => _activeWebViews.Count;
 
+        public IEnumerable<WebView2> ActiveWebViews => _activeWebViews.Values;
+
+        /// <summary>
+        /// Link mở cửa sổ mới (target=_blank, window.open) được mở bằng trình duyệt mặc định của Windows
+        /// thay vì cửa sổ WebView2 nhỏ. Trang của chính nền tảng chat (vd xem trước file) vẫn mở như cũ.
+        /// Trang mở cửa sổ trống trước rồi mới chuyển tới link thật (about:blank): dùng một WebView ẩn
+        /// để bắt địa chỉ thật rồi chuyển sang trình duyệt.
+        /// </summary>
+        private static void AttachExternalLinkHandler(WebView2 webView, CoreWebView2Environment env, string platformHost)
+        {
+            bool IsExternal(string? url, out Uri? uri)
+            {
+                uri = null;
+                if (!Uri.TryCreate(url, UriKind.Absolute, out var u))
+                    return false;
+                uri = u;
+                return (u.Scheme == Uri.UriSchemeHttp || u.Scheme == Uri.UriSchemeHttps)
+                       && !string.Equals(u.Host, platformHost, StringComparison.OrdinalIgnoreCase);
+            }
+
+            webView.CoreWebView2.NewWindowRequested += async (sender, args) =>
+            {
+                if (IsExternal(args.Uri, out var uri))
+                {
+                    args.Handled = true;
+                    OpenInDefaultBrowser(uri!);
+                    return;
+                }
+                bool blank = string.IsNullOrEmpty(args.Uri) || args.Uri.StartsWith("about:blank", StringComparison.OrdinalIgnoreCase);
+                if (!blank)
+                    return; // trang của nền tảng chat, blob:, data: ... -> giữ như cũ
+
+                var deferral = args.GetDeferral();
+                try
+                {
+                    var hwnd = new System.Windows.Interop.WindowInteropHelper(Application.Current.MainWindow).Handle;
+                    var controller = await env.CreateCoreWebView2ControllerAsync(hwnd);
+                    controller.IsVisible = false;
+                    bool done = false;
+                    void Close()
+                    {
+                        if (done) return;
+                        done = true;
+                        try { controller.Close(); } catch { }
+                    }
+                    controller.CoreWebView2.NavigationStarting += (s2, a2) =>
+                    {
+                        if (Uri.TryCreate(a2.Uri, UriKind.Absolute, out var target)
+                            && (target.Scheme == Uri.UriSchemeHttp || target.Scheme == Uri.UriSchemeHttps))
+                        {
+                            a2.Cancel = true;
+                            OpenInDefaultBrowser(target);
+                            Application.Current.Dispatcher.BeginInvoke(Close);
+                        }
+                    };
+                    args.NewWindow = controller.CoreWebView2;
+                    args.Handled = true;
+                    // Không có điều hướng nào trong 15 giây -> đóng WebView ẩn
+                    _ = Task.Delay(15000).ContinueWith(_ => Application.Current.Dispatcher.BeginInvoke(Close));
+                }
+                catch
+                {
+                    // Không tạo được WebView ẩn -> để trang tự xử lý
+                }
+                finally
+                {
+                    deferral.Complete();
+                }
+            };
+        }
+
+        private static void OpenInDefaultBrowser(Uri uri)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+            }
+            catch
+            {
+                // Không mở được trình duyệt mặc định -> bỏ qua
+            }
+        }
+
+
         public async Task<bool> StartOrWakeSessionAsync(ZaloAccountProfile profile, bool makeVisible = true)
         {
             if (_hostGrid == null)
@@ -279,6 +363,9 @@ namespace ZaloMultiWorkspace.Services
                         args.Response.Password = profile.ProxyPass ?? string.Empty;
                     };
                 }
+
+                // Link mở cửa sổ mới (link trong tin nhắn): mở bằng trình duyệt mặc định của Windows
+                AttachExternalLinkHandler(webView, env, new Uri(profile.PlatformUrl).Host);
 
                 // Tự động cấp quyền Notification cho Zalo Web để nhận sự kiện tin nhắn mới khi ở tab khác
                 webView.CoreWebView2.PermissionRequested += (sender, args) =>
