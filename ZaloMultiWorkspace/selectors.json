@@ -11,7 +11,9 @@
     "ConversationItemSelector": ".conv-item, [id*='friend-item'], .msg-item",
     "ConversationItemBadgeSelector": ".z-noti-badge, [class*='noti-badge'], .fa-num5",
     "ConversationNameSelector": ".conv-item-title__name, .truncate, [class*='title']",
-    "ConversationPreviewSelector": ".conv-item-body__main, .conv-message, [class*='message']"
+    "ConversationPreviewSelector": ".conv-item-body__main, .conv-message, [class*='message']",
+    "ConversationBadgeRequiresNumber": false,
+    "ConversationMutedSelector": ""
   },
   "Telegram": {
     "ChatInputSelector": "#editable-message-text, .input-message-input[contenteditable='true'], div[contenteditable='true'].form-control",
@@ -21,10 +23,12 @@
     "ActiveChatTitleSelector": ".MiddleHeader .ChatInfo .fullName, .MiddleHeader .title h3, .chat-info .peer-title",
     "UnreadBadgeSelector": "",
     "NavBadgeMaxLeft": 0,
-    "ConversationUnreadBadgeSelector": ".ListItem.Chat .ChatBadge.unread:not(.muted), .chatlist-chat .dialog-subtitle-badge-unread:not(.is-muted)",
+    "ConversationUnreadBadgeSelector": ".ListItem.Chat .chat-badge-transition, .chatlist-chat .dialog-subtitle-badge-unread",
     "ConversationItemSelector": ".ListItem.Chat, .chatlist-chat",
-    "ConversationItemBadgeSelector": ".ChatBadge.unread, .dialog-subtitle-badge-unread",
+    "ConversationItemBadgeSelector": ".chat-badge-transition, .dialog-subtitle-badge-unread",
     "ConversationNameSelector": ".fullName, .title h3, .peer-title",
-    "ConversationPreviewSelector": ".last-message, .subtitle, .dialog-subtitle"
+    "ConversationPreviewSelector": ".last-message, .subtitle, .dialog-subtitle",
+    "ConversationBadgeRequiresNumber": true,
+    "ConversationMutedSelector": ".icon-muted"
   }
 }

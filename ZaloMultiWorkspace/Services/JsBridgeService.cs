@@ -31,6 +31,10 @@ namespace ZaloMultiWorkspace.Services
         public string ConversationItemBadgeSelector { get; set; } = string.Empty;
         public string ConversationNameSelector { get; set; } = string.Empty;
         public string ConversationPreviewSelector { get; set; } = string.Empty;
+        /// <summary>Chỉ tính badge có số (Telegram có badge ghim không có số). false = badge không số tính là 1 (chấm đỏ Zalo)</summary>
+        public bool ConversationBadgeRequiresNumber { get; set; }
+        /// <summary>Cuộc chat chứa phần tử này là đã tắt tiếng -> không tính tin chưa đọc (giống bộ đếm của Telegram)</summary>
+        public string ConversationMutedSelector { get; set; } = string.Empty;
 
         public static PlatformSelectors DefaultZalo() => new()
         {
@@ -55,9 +59,13 @@ namespace ZaloMultiWorkspace.Services
             SendButtonSelector = ".Button.send, button.send, .btn-send",
             ActiveChatTitleSelector = ".MiddleHeader .ChatInfo .fullName, .MiddleHeader .title h3, .chat-info .peer-title",
             NavBadgeMaxLeft = 0,
-            ConversationUnreadBadgeSelector = ".ListItem.Chat .ChatBadge.unread:not(.muted), .chatlist-chat .dialog-subtitle-badge-unread:not(.is-muted)",
+            // Telegram Web A dùng tên lớp mã hóa (vd UCrLRpZc), chỉ "chat-badge-transition" là ổn định.
+            // Badge ghim cũng nằm trong lớp này nhưng không có số -> ConversationBadgeRequiresNumber = true
+            ConversationUnreadBadgeSelector = ".ListItem.Chat .chat-badge-transition, .chatlist-chat .dialog-subtitle-badge-unread",
             ConversationItemSelector = ".ListItem.Chat, .chatlist-chat",
-            ConversationItemBadgeSelector = ".ChatBadge.unread, .dialog-subtitle-badge-unread",
+            ConversationItemBadgeSelector = ".chat-badge-transition, .dialog-subtitle-badge-unread",
+            ConversationBadgeRequiresNumber = true,
+            ConversationMutedSelector = ".icon-muted",
             ConversationNameSelector = ".fullName, .title h3, .peer-title",
             ConversationPreviewSelector = ".last-message, .subtitle, .dialog-subtitle"
         };
@@ -130,6 +138,9 @@ namespace ZaloMultiWorkspace.Services
         /// <summary>Trường nào trong file bị thiếu thì dùng giá trị mặc định</summary>
         private static PlatformSelectors MergeWithDefaults(PlatformSelectors loaded, PlatformSelectors defaults)
         {
+            // Trường bool mới: file selectors.json cũ không có -> lấy theo mặc định của nền tảng
+            if (!loaded.ConversationBadgeRequiresNumber && defaults.ConversationBadgeRequiresNumber)
+                loaded.ConversationBadgeRequiresNumber = true;
             foreach (var prop in typeof(PlatformSelectors).GetProperties())
             {
                 if (prop.PropertyType == typeof(string) && string.IsNullOrWhiteSpace((string?)prop.GetValue(loaded)))
@@ -163,6 +174,22 @@ namespace ZaloMultiWorkspace.Services
     const CONV_ITEM_BADGE_SEL = {J(sel.ConversationItemBadgeSelector)};
     const CONV_NAME_SEL = {J(sel.ConversationNameSelector)};
     const CONV_MSG_SEL = {J(sel.ConversationPreviewSelector)};
+    const CONV_REQUIRE_NUMBER = {(sel.ConversationBadgeRequiresNumber ? "true" : "false")};
+    const CONV_MUTED_SEL = {J(sel.ConversationMutedSelector)};
+
+    // Số tin trên một badge hội thoại: số trên badge; badge không có số tính 1 (chấm đỏ Zalo) hoặc 0 (badge ghim Telegram)
+    function badgeCount(b) {{
+        const txt = (b.innerText || b.textContent || '').replace('+', '').trim();
+        const num = parseInt(txt, 10);
+        if (!isNaN(num) && num > 0 && /^\d+$/.test(txt)) return num;
+        return CONV_REQUIRE_NUMBER ? 0 : 1;
+    }}
+    function isMutedItem(el) {{
+        if (!CONV_MUTED_SEL || !CONV_ITEM_SEL) return false;
+        let item = null;
+        try {{ item = el.closest(CONV_ITEM_SEL); }} catch (e) {{}}
+        return !!(item && qs(item, CONV_MUTED_SEL));
+    }}
 
     // querySelectorAll an toàn: bộ chọn rỗng hoặc sai cú pháp trả về danh sách rỗng
     function qsa(root, sel) {{
@@ -197,6 +224,22 @@ namespace ZaloMultiWorkspace.Services
             return Promise.resolve('granted');
         }};
         window.Notification = CustomNotification;
+        // Một số trang (Telegram Web) hiện thông báo qua service worker -> bắt cả cách này
+        if (window.ServiceWorkerRegistration && ServiceWorkerRegistration.prototype.showNotification) {{
+            const origShow = ServiceWorkerRegistration.prototype.showNotification;
+            ServiceWorkerRegistration.prototype.showNotification = function(title, options) {{
+                try {{
+                    if (window.chrome && window.chrome.webview) {{
+                        window.chrome.webview.postMessage({{
+                            type: 'NEW_MESSAGE_NOTIFY',
+                            sender: title || 'Tin nhắn mới',
+                            body: (options && options.body) ? options.body : 'Bạn có tin nhắn mới'
+                        }});
+                    }}
+                }} catch (e) {{}}
+                return origShow.apply(this, arguments);
+            }};
+        }}
     }} catch (e) {{}}
 
     // 2. Tính tổng số tin nhắn chưa đọc từ cả <title> và DOM badge hiển thị thực tế của Zalo Web
@@ -240,10 +283,8 @@ namespace ZaloMultiWorkspace.Services
                 let sumConv = 0;
                 const convBadges = qsa(document, CONV_BADGE_SEL);
                 for (const b of convBadges) {{
-                    if (!isBadgeVisible(b)) continue;
-                    const txt = (b.innerText || b.textContent || '').replace('+', '').trim();
-                    const num = parseInt(txt, 10);
-                    sumConv += (!isNaN(num) && num > 0) ? num : 1;
+                    if (!isBadgeVisible(b) || isMutedItem(b)) continue;
+                    sumConv += badgeCount(b);
                 }}
                 if (sumConv > 0) countFromDom = sumConv;
             }}
@@ -256,8 +297,8 @@ namespace ZaloMultiWorkspace.Services
         try {{
             const convItems = qsa(document, CONV_ITEM_SEL);
             for (const item of convItems) {{
-                const badge = qs(item, CONV_ITEM_BADGE_SEL);
-                if (badge && isBadgeVisible(badge)) {{
+                const badge = Array.from(qsa(item, CONV_ITEM_BADGE_SEL)).find(b => isBadgeVisible(b) && badgeCount(b) > 0);
+                if (badge && !isMutedItem(badge)) {{
                     const nameEl = qs(item, CONV_NAME_SEL);
                     const msgEl = qs(item, CONV_MSG_SEL);
                     const sender = nameEl ? (nameEl.innerText || '').trim() : '';
@@ -412,6 +453,7 @@ namespace ZaloMultiWorkspace.Services
         attachTitleObserver();
     }}
     window.checkZaloUnreadNow = () => checkAndSendUnread(true);
+
 
     setInterval(() => {{
         checkAndSendUnread(false);

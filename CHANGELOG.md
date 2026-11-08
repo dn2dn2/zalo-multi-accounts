@@ -3,6 +3,12 @@
 Mọi thay đổi đáng chú ý của **Chat Workspace Pro** (trước đây là Zalo Multi-Workspace Pro) được ghi tại đây.
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/), phiên bản theo [Semantic Versioning](https://semver.org/lang/vi/).
 
+## [1.0.1] - 2026-11-08
+
+### Sửa lỗi
+- **Telegram không báo tin nhắn mới.** Telegram Web không ghi số tin lên tiêu đề trang và dùng tên lớp CSS khác với dự đoán, nên ứng dụng luôn đếm ra 0 tin. Nay ứng dụng đếm đúng theo badge thật của Telegram: chỉ tính badge có số (bỏ qua badge ghim) và bỏ qua cuộc chat đã tắt tiếng.
+- Bắt thêm thông báo mà trang web hiện qua service worker.
+
 ## [1.0.0] - 2026-11-08
 
 Phiên bản phát hành đầu tiên dưới tên **Chat Workspace Pro**.
@@ -91,5 +97,6 @@ Phiên bản phát hành đầu tiên dưới tên **Chat Workspace Pro**.
 - Quản lý nhiều tài khoản Zalo, mỗi tài khoản có dữ liệu đăng nhập và proxy riêng.
 - Tin nhắn mẫu, ghi chú khách hàng, khóa ứng dụng bằng mã PIN, sao lưu và khôi phục dữ liệu.
 
-[1.0.0]: https://github.com/dn2dn2/zalo-multi-accounts/compare/86fb9d3...HEAD
+[1.0.1]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/dn2dn2/zalo-multi-accounts/compare/86fb9d3...v1.0.0
 [0.1.0]: https://github.com/dn2dn2/zalo-multi-accounts/commit/86fb9d3
