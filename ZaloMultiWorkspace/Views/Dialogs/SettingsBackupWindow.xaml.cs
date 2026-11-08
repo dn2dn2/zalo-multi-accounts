@@ -29,6 +29,7 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTrayOnClose;
             StartWithWindowsSwitch.IsChecked = _settings.StartWithWindows;
             TrayHintSwitch.IsChecked = _settings.ShowTrayHintOnClose;
+            InitCaptureAndHotkeys();
 
             // Tab Thông báo
             ToastPopupSwitch.IsChecked = _settings.ShowToastPopup;
@@ -344,6 +345,9 @@ namespace ZaloMultiWorkspace.Views.Dialogs
                     "Giờ không hợp lệ", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            if (!TryApplyHotkeysToSettings())
+                return;
 
             // --- Chung ---
             _settings.MinimizeToTrayOnClose = MinimizeToTrayCheckBox.IsChecked == true;

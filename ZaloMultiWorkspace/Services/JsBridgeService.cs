@@ -152,6 +152,18 @@ namespace ZaloMultiWorkspace.Services
             return loaded;
         }
 
+        /// <summary>Phím tắt Dịch đoạn đã chọn trong trang chat (cập nhật từ Cài đặt)</summary>
+        public HotkeyGesture TranslateHotkey { get; set; } = HotkeyGesture.Parse("Ctrl+Shift+D");
+
+        /// <summary>Đổi phím tắt Dịch cho trang đang mở (trang mở sau sẽ lấy từ script khởi tạo)</summary>
+        public async Task ApplyTranslateHotkeyAsync(WebView2 webView)
+        {
+            if (webView?.CoreWebView2 == null)
+                return;
+            try { await webView.CoreWebView2.ExecuteScriptAsync($"window.__cwpTranslateKey = {TranslateHotkey.ToJsObject()};"); }
+            catch { }
+        }
+
         public string BuildStartupObserverScript(ChatPlatform platform)
         {
             var sel = GetSelectors(platform);
@@ -163,6 +175,7 @@ namespace ZaloMultiWorkspace.Services
 
             return $@"
 (function() {{
+    window.__cwpTranslateKey = {TranslateHotkey.ToJsObject()};
     const CHAT_INPUT_SEL = {chatSelectorJson};
     const AVATAR_SEL = {avatarSelectorJson};
     const ACTIVE_CHAT_SEL = {activeChatSelectorJson};
@@ -425,8 +438,9 @@ namespace ZaloMultiWorkspace.Services
     }}, true);
     window.addEventListener('keydown', (e) => {{
         notifyActivity();
-        // Ctrl+Shift+D: gửi đoạn đang bôi đen sang tab Dịch của ứng dụng
-        if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {{
+        // Phím tắt Dịch (mặc định Ctrl+Shift+D, đổi được trong Cài đặt): gửi đoạn đang bôi đen sang tab Dịch
+        const tk = window.__cwpTranslateKey;
+        if (tk && e.code === tk.code && e.ctrlKey === tk.ctrl && e.altKey === tk.alt && e.shiftKey === tk.shift) {{
             const sel = (window.getSelection ? window.getSelection().toString() : '').trim();
             if (sel && window.chrome && window.chrome.webview) {{
                 window.chrome.webview.postMessage({{ type: 'TRANSLATE_SELECTION', text: sel }});
@@ -492,6 +506,27 @@ namespace ZaloMultiWorkspace.Services
             keybd_event(VK_V, 0, 0, UIntPtr.Zero);
             keybd_event(VK_V, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
             keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        }
+
+        /// <summary>Dán ảnh (vd ảnh chụp màn hình) vào ô chat qua Clipboard + Ctrl+V. Người dùng tự bấm Gửi.</summary>
+        public async Task<bool> PasteImageAsync(WebView2 webView, ChatPlatform platform, BitmapSource image)
+        {
+            if (webView?.CoreWebView2 == null)
+                return false;
+            if (!Views.ScreenCaptureWindow.SetClipboardImage(image))
+                return false;
+            webView.Focus();
+            string focusScript = $@"
+(function() {{
+    const el = document.querySelector({JsonSerializer.Serialize(GetSelectors(platform).ChatInputSelector)});
+    if (el) {{ el.focus(); return true; }}
+    return false;
+}})();";
+            string found = await webView.CoreWebView2.ExecuteScriptAsync(focusScript);
+            await Task.Delay(120);
+            SimulateCtrlV();
+            await Task.Delay(200);
+            return found == "true";
         }
 
         public async Task InsertQuickReplyAsync(WebView2 webView, ChatPlatform platform, string text, string? imagePath, bool sendImmediately, bool replaceAll = false)

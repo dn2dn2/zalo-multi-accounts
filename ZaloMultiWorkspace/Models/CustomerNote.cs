@@ -120,6 +120,22 @@ namespace ZaloMultiWorkspace.Models
         /// <summary>Ngôn ngữ dùng lần trước cho từng cuộc chat: khóa "accountId|tên cuộc chat"</summary>
         public Dictionary<string, string> ChatTargetLanguages { get; set; } = new();
 
+        // --- Phím tắt & chụp màn hình ---
+        /// <summary>Phím tắt người dùng đã đổi: khóa = tên HotkeyAction, giá trị "" = đã tắt. Thiếu khóa = dùng mặc định.</summary>
+        public Dictionary<string, string> Hotkeys { get; set; } = new();
+        /// <summary>Thư mục lưu ảnh chụp (rỗng = Ảnh\ChatWorkspacePro)</summary>
+        public string ScreenshotFolder { get; set; } = string.Empty;
+        /// <summary>Lần báo trùng phím tắt gần nhất (để không báo lại mỗi lần mở ứng dụng)</summary>
+        public string HotkeyConflictNotified { get; set; } = string.Empty;
+
+        public HotkeyGesture GetHotkey(HotkeyAction action)
+            => HotkeyGesture.Parse(Hotkeys.TryGetValue(action.ToString(), out var v) ? v : HotkeyDefaults.Get(action).Default);
+
+        public string GetScreenshotFolder()
+            => string.IsNullOrWhiteSpace(ScreenshotFolder)
+                ? System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "ChatWorkspacePro")
+                : ScreenshotFolder;
+
         /// <summary>Chế độ giao diện: System (theo Windows, mặc định) / Light / Dark</summary>
         public Services.AppThemeMode ThemeMode { get; set; } = Services.AppThemeMode.System;
     }
