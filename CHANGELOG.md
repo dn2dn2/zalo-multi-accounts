@@ -3,6 +3,14 @@
 Mọi thay đổi đáng chú ý của **Chat Workspace Pro** (trước đây là Zalo Multi-Workspace Pro) được ghi tại đây.
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/), phiên bản theo [Semantic Versioning](https://semver.org/lang/vi/).
 
+## [1.1.1] - 2026-11-09
+
+### Sửa lỗi
+- **Số tin chưa đọc của Zalo không khớp.** Zalo vẽ con số trên biểu tượng Tin nhắn bằng icon (không phải chữ), nên ứng dụng không đọc được và phải cộng các badge trong danh sách, dẫn tới đếm trùng 2 lần và tính cả chat im lặng. Nay ứng dụng lấy đúng số trên biểu tượng Tin nhắn của Zalo và bỏ qua các cuộc chat đã tắt thông báo.
+- Thông báo popup không còn cộng thêm 1 vào số tin (bị đếm trùng với số trên trang).
+- Tài khoản chạy nền nay được giảm số khi bạn đã đọc tin ở nơi khác (vd trên điện thoại).
+- Hiện dạng "99+" khi trang chat chỉ ghi số có dấu +.
+
 ## [1.1.0] - 2026-11-08
 
 ### Thêm mới
@@ -124,6 +132,7 @@ Phiên bản phát hành đầu tiên dưới tên **Chat Workspace Pro**.
 - Quản lý nhiều tài khoản Zalo, mỗi tài khoản có dữ liệu đăng nhập và proxy riêng.
 - Tin nhắn mẫu, ghi chú khách hàng, khóa ứng dụng bằng mã PIN, sao lưu và khôi phục dữ liệu.
 
+[1.1.1]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/dn2dn2/zalo-multi-accounts/compare/86fb9d3...v1.0.0
