@@ -278,7 +278,8 @@
         <tb:TaskbarIcon x:Name="TrayIcon"
                         IconSource="pack://application:,,,/Assets/app.ico"
                         ToolTipText="Chat Workspace Pro"
-                        TrayMouseDoubleClick="TrayIcon_TrayMouseDoubleClick">
+                        TrayMouseDoubleClick="TrayIcon_TrayMouseDoubleClick"
+                        TrayBalloonTipClicked="TrayIcon_TrayBalloonTipClicked">
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu Background="{DynamicResource Brush.Bg.Panel}" Foreground="{DynamicResource Brush.Text.Primary}" BorderBrush="{DynamicResource Brush.Border.Subtle}">
                     <MenuItem Header="Mở ứng dụng" Click="TrayOpen_Click"/>
@@ -702,6 +703,8 @@
 
                 <!-- THANH THÔNG BÁO NỔI IN-APP KHI CÓ TIN NHẮN TỪ TÀI KHOẢN KHÁC -->
                 <Border Grid.Row="1" Background="#1E3A8A" BorderBrush="#3B82F6" BorderThickness="0,0,0,1" Padding="14,8"
+                        Cursor="Hand" MouseLeftButtonDown="NotificationBanner_MouseLeftButtonDown"
+                        ToolTip="Nhấn để chuyển tới tài khoản và mở ngay cuộc trò chuyện này"
                         Visibility="{Binding IsInAppNotificationVisible, Converter={StaticResource BoolToVis}}">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">

@@ -138,6 +138,15 @@ namespace ZaloMultiWorkspace.Views
             }
         }
 
+        private void NotificationBanner_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (ViewModel.SwitchToNotifiedAccountCommand.CanExecute(null))
+            {
+                ViewModel.SwitchToNotifiedAccountCommand.Execute(null);
+                e.Handled = true;
+            }
+        }
+
         /// <summary>
         /// Hỗ trợ chuyển nhanh tài khoản bằng phím tắt Ctrl + 1..9 với độ trễ 0ms
         /// </summary>
@@ -435,6 +444,15 @@ namespace ZaloMultiWorkspace.Views
         private void TrayIcon_TrayMouseDoubleClick(object sender, RoutedEventArgs e)
         {
             RestoreFromTray();
+        }
+
+        private void TrayIcon_TrayBalloonTipClicked(object sender, RoutedEventArgs e)
+        {
+            RestoreFromTray();
+            if (!ViewModel.IsLocked && ViewModel.SwitchToNotifiedAccountCommand.CanExecute(null))
+            {
+                ViewModel.SwitchToNotifiedAccountCommand.Execute(null);
+            }
         }
 
         private void TrayOpen_Click(object sender, RoutedEventArgs e)

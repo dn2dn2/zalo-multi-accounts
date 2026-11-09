@@ -257,6 +257,8 @@ namespace ZaloMultiWorkspace.ViewModels
         [ObservableProperty]
         private string _notificationBody = string.Empty;
 
+        private string _notificationSenderName = string.Empty;
+
         public bool IsWebViewAirspaceClear => !IsLocked && !IsModalDialogOpen;
 
         public bool IsSelectedSessionRunning =>
@@ -750,6 +752,9 @@ namespace ZaloMultiWorkspace.ViewModels
             if (settings.ShowInAppBanner)
             {
                 NotificationAccount = profile;
+                _notificationSenderName = string.Equals(senderName, profile.DisplayName, StringComparison.OrdinalIgnoreCase)
+                    ? string.Empty
+                    : (senderName ?? string.Empty);
                 NotificationHeader = $"🔔 [{profile.DisplayName}] {senderName}";
                 NotificationBody = bodyText;
                 IsInAppNotificationVisible = true;
@@ -790,14 +795,30 @@ namespace ZaloMultiWorkspace.ViewModels
         [RelayCommand]
         private async Task SwitchToNotifiedAccountAsync()
         {
+            var targetAccount = NotificationAccount;
+            string targetSender = _notificationSenderName;
+
             IsInAppNotificationVisible = false;
             _toastDismissTimer.Stop();
-            if (NotificationAccount != null)
+
+            if (targetAccount != null)
             {
-                await SelectAccountAsync(NotificationAccount);
-                if (!SessionManager.IsSessionRunning(NotificationAccount.Id))
+                await SelectAccountAsync(targetAccount);
+                bool wasRunning = SessionManager.IsSessionRunning(targetAccount.Id);
+                if (!wasRunning)
                 {
                     await StartOrWakeSelectedAccountAsync();
+                    await Task.Delay(1200);
+                }
+                else
+                {
+                    await Task.Delay(120);
+                }
+
+                var webView = SessionManager.GetWebView(targetAccount.Id);
+                if (webView != null)
+                {
+                    await JsBridgeService.OpenConversationBySenderAsync(webView, targetAccount.Platform, targetSender);
                 }
             }
         }
