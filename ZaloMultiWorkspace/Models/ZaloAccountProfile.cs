@@ -146,8 +146,17 @@ namespace ZaloMultiWorkspace.Models
 
         [ObservableProperty]
         [property: BsonIgnore] // phải gắn lên property sinh ra thì LiteDB mới bỏ qua
-        [NotifyPropertyChangedFor(nameof(HasUnread))]
+        [NotifyPropertyChangedFor(nameof(HasUnread), nameof(UnreadBadgeText))]
         private int _unreadCount = 0;
+
+        /// <summary>Trang chat chỉ ghi số có dấu + (vd "99+") -> số thật có thể lớn hơn</summary>
+        [ObservableProperty]
+        [property: BsonIgnore]
+        [NotifyPropertyChangedFor(nameof(UnreadBadgeText))]
+        private bool _isUnreadCapped;
+
+        [BsonIgnore]
+        public string UnreadBadgeText => IsUnreadCapped ? $"{UnreadCount}+" : UnreadCount.ToString();
 
         [ObservableProperty]
         [property: BsonIgnore] // phải gắn lên property sinh ra thì LiteDB mới bỏ qua
