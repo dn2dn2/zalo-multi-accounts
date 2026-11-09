@@ -22,6 +22,10 @@ namespace ZaloMultiWorkspace.Services
         private readonly JsBridgeService _jsBridgeService;
         private Grid? _hostGrid;
         private readonly Dictionary<Guid, DateTime> _lastNotifyAt = new();
+        /// <summary>Số tin trang chat báo gần nhất (kể cả khi chưa áp dụng)</summary>
+        private readonly Dictionary<Guid, int> _lastReportedUnread = new();
+        /// <summary>Thời gian chờ xác nhận trước khi giảm số tin của tài khoản chạy nền</summary>
+        private static readonly TimeSpan BackgroundDecreaseDelay = TimeSpan.FromSeconds(3);
         private const int GenericNotifyDelayMs = 700;
         private const double NotifyDedupSeconds = 3.0;
 
@@ -388,11 +392,9 @@ namespace ZaloMultiWorkspace.Services
                         Application.Current.Dispatcher.Invoke(() =>
                         {
                             int oldCount = profile.UnreadCount;
-                            // Không tự xóa badge chưa đọc khi tài khoản đang ở nền (chưa được người dùng mở xem)
-                            if (!profile.IsSelected && titleCount < oldCount)
-                                return;
-
-                            if (titleCount != oldCount)
+                            // Tiêu đề chỉ dùng để tăng số; giảm số do script trên trang báo (UNREAD_UPDATE),
+                            // vì script tính cả tiêu đề lẫn badge (Telegram không ghi số lên tiêu đề)
+                            if (titleCount > oldCount)
                             {
                                 profile.UnreadCount = titleCount;
                                 OnUnreadCountChanged?.Invoke(profile, titleCount);
@@ -437,6 +439,19 @@ namespace ZaloMultiWorkspace.Services
             }
         }
 
+        private async void ConfirmBackgroundDecreaseLater(ZaloAccountProfile profile, int lowerCount)
+        {
+            await Task.Delay(BackgroundDecreaseDelay);
+            // Trang vẫn báo đúng số đó (không có thay đổi mới) -> áp dụng
+            if (!_lastReportedUnread.TryGetValue(profile.Id, out int latest) || latest != lowerCount)
+                return;
+            if (profile.UnreadCount == lowerCount)
+                return;
+            profile.UnreadCount = lowerCount;
+            OnUnreadCountChanged?.Invoke(profile, lowerCount);
+            OnSessionStateChanged?.Invoke();
+        }
+
         private void HandleWebMessage(ZaloAccountProfile profile, string jsonMessage)
         {
             if (string.IsNullOrWhiteSpace(jsonMessage))
@@ -455,10 +470,13 @@ namespace ZaloMultiWorkspace.Services
                     {
                         case "UNREAD_UPDATE":
                             int oldCount = profile.UnreadCount;
-                            // Khi tài khoản đang ở nền (người dùng đang ở tab khác), giữ nguyên badge thông báo trên icon,
-                            // không cho phép giảm về 0 cho tới khi người dùng chuyển sang tài khoản đó
+                            _lastReportedUnread[profile.Id] = msg.Count;
+                            profile.IsUnreadCapped = msg.Capped && msg.Count > 0;
+                            // Tài khoản chạy nền: số giảm (vd đã đọc trên điện thoại) chỉ áp dụng khi trang vẫn báo
+                            // số đó sau 3 giây, tránh mất badge vì một lần đọc trang chưa tải xong
                             if (!profile.IsSelected && msg.Count < oldCount)
                             {
+                                ConfirmBackgroundDecreaseLater(profile, msg.Count);
                                 break;
                             }
 
@@ -479,12 +497,9 @@ namespace ZaloMultiWorkspace.Services
                             break;
 
                         case "NEW_MESSAGE_NOTIFY":
-                            if (!profile.IsSelected)
-                            {
-                                profile.UnreadCount = profile.UnreadCount + 1;
-                                OnUnreadCountChanged?.Invoke(profile, profile.UnreadCount);
-                            }
-                            else if (profile.UnreadCount == 0)
+                            // Số tin lấy theo số trên trang (UNREAD_UPDATE); thông báo chỉ bảo đảm badge không bị 0.
+                            // Trước đây mỗi thông báo cộng thêm 1 -> đếm trùng với số trên trang.
+                            if (profile.UnreadCount == 0)
                             {
                                 profile.UnreadCount = 1;
                                 OnUnreadCountChanged?.Invoke(profile, 1);

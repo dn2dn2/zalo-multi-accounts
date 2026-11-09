@@ -45,7 +45,9 @@ namespace ZaloMultiWorkspace.Services
             ActiveChatTitleSelector = "header .header-title, .thread-chat-title, #header .title",
             UnreadBadgeSelector = "#main-tab .z-noti-badge, nav .z-noti-badge, [class*='noti-badge'], [class*='unread-count'], .fa-num5",
             NavBadgeMaxLeft = 90,
-            ConversationUnreadBadgeSelector = ".conv-item .z-noti-badge, .conv-item [class*='noti-badge'], .conv-item .fa-num5",
+            // Chỉ khung badge (.z-noti-badge), không lấy phần số bên trong (z-noti-badge__content) để khỏi đếm 2 lần
+            ConversationUnreadBadgeSelector = ".conv-item .z-noti-badge",
+            ConversationMutedSelector = ".conv__mute, .fa-Notif_Off_24_Filled",
             ConversationItemSelector = ".conv-item, [id*='friend-item'], .msg-item",
             ConversationItemBadgeSelector = ".z-noti-badge, [class*='noti-badge'], .fa-num5",
             ConversationNameSelector = ".conv-item-title__name, .truncate, [class*='title']",
@@ -75,6 +77,8 @@ namespace ZaloMultiWorkspace.Services
     {
         public string? Type { get; set; }
         public int Count { get; set; }
+        /// <summary>Số trên trang có dấu + (vd "99+")</summary>
+        public bool Capped { get; set; }
         public string? AvatarUrl { get; set; }
         public string? Shortcut { get; set; }
         public string? ActiveChatName { get; set; }
@@ -191,10 +195,24 @@ namespace ZaloMultiWorkspace.Services
     const CONV_MUTED_SEL = {J(sel.ConversationMutedSelector)};
 
     // Số tin trên một badge hội thoại: số trên badge; badge không có số tính 1 (chấm đỏ Zalo) hoặc 0 (badge ghim Telegram)
+    function clsOf(el) {{
+        return (el.className && el.className.baseVal !== undefined) ? el.className.baseVal : String(el.className || '');
+    }}
+    // Số trên badge: chữ số ('5', '99+') hoặc icon số của Zalo (lớp 'fa-3_24_Line', 'fa-9plus_24_Line').
+    // Trả về {{ n, plus }} hoặc null nếu badge không có số (chấm đỏ)
+    function badgeNumber(b) {{
+        const txt = (b.innerText || b.textContent || '').trim();
+        if (/^\d+\+?$/.test(txt)) return {{ n: parseInt(txt, 10), plus: txt.endsWith('+') }};
+        const nodes = [b].concat(Array.from(b.querySelectorAll('[class*=""fa-""]')));
+        for (const el of nodes) {{
+            const m = clsOf(el).match(/(?:^|\s)fa-(\d+)(plus)?_\d+_Line(?:\s|$)/i);
+            if (m) return {{ n: parseInt(m[1], 10), plus: !!m[2] }};
+        }}
+        return null;
+    }}
     function badgeCount(b) {{
-        const txt = (b.innerText || b.textContent || '').replace('+', '').trim();
-        const num = parseInt(txt, 10);
-        if (!isNaN(num) && num > 0 && /^\d+$/.test(txt)) return num;
+        const bn = badgeNumber(b);
+        if (bn && bn.n > 0) return bn.n;
         return CONV_REQUIRE_NUMBER ? 0 : 1;
     }}
     function isMutedItem(el) {{
@@ -215,6 +233,8 @@ namespace ZaloMultiWorkspace.Services
     }}
 
     let lastUnreadSent = -1;
+
+    let lastCappedSent = false;
 
     // 1. Hook window.Notification để bắt ngay thông báo tin nhắn mới từ Zalo Web
     try {{
@@ -266,7 +286,9 @@ namespace ZaloMultiWorkspace.Services
         return rect.width > 0 && rect.height > 0;
     }}
 
+    let lastCapped = false;
     function computeUnreadCount() {{
+        lastCapped = false;
         let countFromTitle = 0;
         if (document.title) {{
             const match = document.title.match(/\((\d+)\)/);
@@ -282,11 +304,11 @@ namespace ZaloMultiWorkspace.Services
             for (const b of navBadges) {{
                 if (!isBadgeVisible(b)) continue;
                 const rect = b.getBoundingClientRect();
-                const txt = (b.innerText || b.textContent || '').replace('+', '').trim();
-                const num = parseInt(txt, 10);
-                if (!isNaN(num) && num > 0) {{
+                const bn = badgeNumber(b);
+                if (bn && bn.n > 0) {{
                     if (NAV_BADGE_MAX_LEFT <= 0 || (rect.left >= 0 && rect.left < NAV_BADGE_MAX_LEFT && rect.top >= 40 && rect.top < 170)) {{
-                        countFromDom = Math.max(countFromDom, num);
+                        if (bn.n > countFromDom) lastCapped = bn.plus;
+                        countFromDom = Math.max(countFromDom, bn.n);
                     }}
                 }}
             }}
@@ -303,6 +325,7 @@ namespace ZaloMultiWorkspace.Services
             }}
         }} catch (e) {{}}
 
+        if (countFromTitle > countFromDom) lastCapped = false;
         return Math.max(countFromTitle, countFromDom);
     }}
 
@@ -327,7 +350,8 @@ namespace ZaloMultiWorkspace.Services
 
     function checkAndSendUnread(forceSync = false) {{
         const currentUnread = computeUnreadCount();
-        if (forceSync || currentUnread !== lastUnreadSent) {{
+        if (forceSync || currentUnread !== lastUnreadSent || lastCapped !== lastCappedSent) {{
+            lastCappedSent = lastCapped;
             const increased = (lastUnreadSent >= 0 && currentUnread > lastUnreadSent);
             lastUnreadSent = currentUnread;
             if (window.chrome && window.chrome.webview) {{
@@ -335,6 +359,7 @@ namespace ZaloMultiWorkspace.Services
                 window.chrome.webview.postMessage({{
                     type: 'UNREAD_UPDATE',
                     count: currentUnread,
+                    capped: lastCapped,
                     sender: preview ? preview.sender : '',
                     body: preview ? preview.body : ''
                 }});
@@ -467,6 +492,7 @@ namespace ZaloMultiWorkspace.Services
         attachTitleObserver();
     }}
     window.checkZaloUnreadNow = () => checkAndSendUnread(true);
+
 
 
     setInterval(() => {{

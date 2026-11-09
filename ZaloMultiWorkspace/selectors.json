@@ -7,13 +7,13 @@
     "ActiveChatTitleSelector": "header .header-title, .thread-chat-title, #header .title",
     "UnreadBadgeSelector": "#main-tab .z-noti-badge, nav .z-noti-badge, [class*='noti-badge'], [class*='unread-count'], .fa-num5",
     "NavBadgeMaxLeft": 90,
-    "ConversationUnreadBadgeSelector": ".conv-item .z-noti-badge, .conv-item [class*='noti-badge'], .conv-item .fa-num5",
+    "ConversationUnreadBadgeSelector": ".conv-item .z-noti-badge",
     "ConversationItemSelector": ".conv-item, [id*='friend-item'], .msg-item",
     "ConversationItemBadgeSelector": ".z-noti-badge, [class*='noti-badge'], .fa-num5",
     "ConversationNameSelector": ".conv-item-title__name, .truncate, [class*='title']",
     "ConversationPreviewSelector": ".conv-item-body__main, .conv-message, [class*='message']",
     "ConversationBadgeRequiresNumber": false,
-    "ConversationMutedSelector": ""
+    "ConversationMutedSelector": ".conv__mute, .fa-Notif_Off_24_Filled"
   },
   "Telegram": {
     "ChatInputSelector": "#editable-message-text, .input-message-input[contenteditable='true'], div[contenteditable='true'].form-control",
