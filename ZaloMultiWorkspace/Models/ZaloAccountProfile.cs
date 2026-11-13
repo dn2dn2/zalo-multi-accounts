@@ -12,7 +12,9 @@ namespace ZaloMultiWorkspace.Models
     public enum ChatPlatform
     {
         Zalo = 0,
-        Telegram = 1
+        Telegram = 1,
+        WhatsApp = 2,
+        Messenger = 3
     }
 
     public enum AccountConnectionStatus
@@ -39,26 +41,53 @@ namespace ZaloMultiWorkspace.Models
         [NotifyPropertyChangedFor(nameof(PlatformColor))]
         [NotifyPropertyChangedFor(nameof(PlatformGlyph))]
         [NotifyPropertyChangedFor(nameof(IsTelegram))]
+        [NotifyPropertyChangedFor(nameof(IsGlyphIcon))]
         private ChatPlatform _platform = ChatPlatform.Zalo;
 
         [BsonIgnore]
-        public string PlatformName => Platform == ChatPlatform.Telegram ? "Telegram" : "Zalo";
+        public string PlatformName => Platform switch
+        {
+            ChatPlatform.Telegram => "Telegram",
+            ChatPlatform.WhatsApp => "WhatsApp",
+            ChatPlatform.Messenger => "Messenger",
+            _ => "Zalo"
+        };
 
         [BsonIgnore]
-        public string PlatformUrl => Platform == ChatPlatform.Telegram
-            ? "https://web.telegram.org/a/"
-            : "https://chat.zalo.me";
+        public string PlatformUrl => Platform switch
+        {
+            ChatPlatform.Telegram => "https://web.telegram.org/a/",
+            ChatPlatform.WhatsApp => "https://web.whatsapp.com/",
+            ChatPlatform.Messenger => "https://www.messenger.com/",
+            _ => "https://chat.zalo.me"
+        };
 
         /// <summary>Màu huy hiệu nền tảng</summary>
         [BsonIgnore]
-        public string PlatformColor => Platform == ChatPlatform.Telegram ? "#229ED9" : "#0068FF";
+        public string PlatformColor => Platform switch
+        {
+            ChatPlatform.Telegram => "#229ED9",
+            ChatPlatform.WhatsApp => "#25D366",
+            ChatPlatform.Messenger => "#0A7CFF",
+            _ => "#0068FF"
+        };
 
-        /// <summary>Ký hiệu trên huy hiệu: "Z" cho Zalo, máy bay giấy (Segoe "Send") cho Telegram</summary>
+        /// <summary>Ký hiệu trên huy hiệu: "Z" cho Zalo, máy bay giấy (Segoe "Send") cho Telegram, điện thoại cho WhatsApp</summary>
         [BsonIgnore]
-        public string PlatformGlyph => Platform == ChatPlatform.Telegram ? "\uE724" : "Z";
+        public string PlatformGlyph => Platform switch
+        {
+            ChatPlatform.Telegram => "\uE724",
+            ChatPlatform.WhatsApp => "\uE717",
+            ChatPlatform.Messenger => "\uE8BD",
+            _ => "Z"
+        };
 
         [BsonIgnore]
         public bool IsTelegram => Platform == ChatPlatform.Telegram;
+
+        /// <summary>Ký hiệu nền tảng là icon (font Segoe) chứ không phải chữ</summary>
+        [BsonIgnore]
+        public bool IsGlyphIcon => Platform != ChatPlatform.Zalo;
 
         [ObservableProperty]
         private string _tagCategory = "CSKH";

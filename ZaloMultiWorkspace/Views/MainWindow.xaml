@@ -195,7 +195,7 @@
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsTelegram}" Value="True">
+                <DataTrigger Binding="{Binding IsGlyphIcon}" Value="True">
                     <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>
                     <Setter Property="FontWeight" Value="Normal"/>
                 </DataTrigger>

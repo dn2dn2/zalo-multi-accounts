@@ -58,10 +58,14 @@ namespace ZaloMultiWorkspace.ViewModels
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsZaloSelected))]
         [NotifyPropertyChangedFor(nameof(IsTelegramSelected))]
+        [NotifyPropertyChangedFor(nameof(IsWhatsAppSelected))]
+        [NotifyPropertyChangedFor(nameof(IsMessengerSelected))]
         private ChatPlatform _platform = ChatPlatform.Zalo;
 
         public bool IsZaloSelected => Platform == ChatPlatform.Zalo;
         public bool IsTelegramSelected => Platform == ChatPlatform.Telegram;
+        public bool IsWhatsAppSelected => Platform == ChatPlatform.WhatsApp;
+        public bool IsMessengerSelected => Platform == ChatPlatform.Messenger;
         public bool CanChangePlatform => !IsEditMode;
 
         [RelayCommand]
@@ -104,7 +108,13 @@ namespace ZaloMultiWorkspace.ViewModels
             if (!IsEditMode)
                 target.Platform = Platform;
             target.DisplayName = string.IsNullOrWhiteSpace(DisplayName)
-                ? (Platform == ChatPlatform.Telegram ? "Tài khoản Telegram" : "Tài khoản Zalo")
+                ? Platform switch
+                {
+                    ChatPlatform.Telegram => "Tài khoản Telegram",
+                    ChatPlatform.WhatsApp => "Tài khoản WhatsApp",
+                    ChatPlatform.Messenger => "Tài khoản Messenger",
+                    _ => "Tài khoản Zalo"
+                }
                 : DisplayName.Trim();
             target.TagCategory = string.IsNullOrWhiteSpace(TagCategory) ? "CSKH" : TagCategory.Trim();
             target.TagColor = string.IsNullOrWhiteSpace(TagColor) ? "#1E3A8A" : TagColor.Trim();

@@ -30,5 +30,37 @@
     "ConversationPreviewSelector": ".last-message, .subtitle, .dialog-subtitle",
     "ConversationBadgeRequiresNumber": true,
     "ConversationMutedSelector": ".icon-muted"
+  },
+  "WhatsApp": {
+    "ChatInputSelector": "footer div[contenteditable='true'][role='textbox'], footer div[contenteditable='true']",
+    "SendButtonSelector": "footer button[aria-label='Send'], footer button[aria-label='Gửi'], footer span[data-icon='send'], footer span[data-icon='wds-ic-send-filled']",
+    "AvatarSelector": "",
+    "AvatarBackgroundSelector": "",
+    "ActiveChatTitleSelector": "#main header span[dir='auto']",
+    "UnreadBadgeSelector": "",
+    "NavBadgeMaxLeft": 0,
+    "ConversationUnreadBadgeSelector": "#pane-side span[aria-label*='unread' i], #pane-side span[aria-label*='chưa đọc' i]",
+    "ConversationItemSelector": "#pane-side [role='listitem'], #pane-side [role='row']",
+    "ConversationItemBadgeSelector": "span[aria-label*='unread' i], span[aria-label*='chưa đọc' i]",
+    "ConversationNameSelector": "span[dir='auto'][title]",
+    "ConversationPreviewSelector": "span[dir='ltr'], span[dir='auto']:not([title])",
+    "ConversationBadgeRequiresNumber": false,
+    "ConversationMutedSelector": "[data-icon='muted'], [data-icon*='mute']"
+  },
+  "Messenger": {
+    "ChatInputSelector": "[role='main'] div[contenteditable='true'][role='textbox'], div[contenteditable='true'][role='textbox']",
+    "SendButtonSelector": "[role='main'] div[role='button'][aria-label*='enter' i], [role='main'] div[role='button'][aria-label*='gửi' i]",
+    "AvatarSelector": "",
+    "AvatarBackgroundSelector": "",
+    "ActiveChatTitleSelector": "[role='main'] h1 span, [role='main'] h2 span[dir='auto']",
+    "UnreadBadgeSelector": "",
+    "NavBadgeMaxLeft": 0,
+    "ConversationUnreadBadgeSelector": "[role='navigation'] [role='row'] [aria-label*='unread' i], [role='navigation'] [role='row'] [aria-label*='chưa đọc' i]",
+    "ConversationItemSelector": "[role='navigation'] [role='row'], [role='grid'] [role='row']",
+    "ConversationItemBadgeSelector": "[aria-label*='unread' i], [aria-label*='chưa đọc' i]",
+    "ConversationNameSelector": "span[dir='auto']",
+    "ConversationPreviewSelector": "span[dir='auto'] + span, div > span[dir='auto']",
+    "ConversationBadgeRequiresNumber": false,
+    "ConversationMutedSelector": "[aria-label*='muted' i], [aria-label*='tắt thông báo' i], [aria-label*='tắt tiếng' i]"
   }
 }
