@@ -242,6 +242,8 @@
                         <DockPanel>
                             <CheckBox x:Name="ToastPopupSwitch" DockPanel.Dock="Right" Style="{StaticResource SwitchStyle}" VerticalAlignment="Center"
                                       AutomationProperties.Name="Popup góc màn hình"/>
+                            <Button DockPanel.Dock="Right" Content="Thử" Height="28" Padding="12,0" Margin="0,0,10,0" VerticalAlignment="Center"
+                                    Click="TestToast_Click" ToolTip="Hiện thử một thông báo ở góc màn hình" AutomationProperties.Name="Thử thông báo"/>
                             <TextBlock Text="&#xEA8F;" Style="{StaticResource RowIcon}"/>
                             <StackPanel>
                                 <TextBlock Text="Popup góc màn hình" Style="{StaticResource RowTitle}"/>

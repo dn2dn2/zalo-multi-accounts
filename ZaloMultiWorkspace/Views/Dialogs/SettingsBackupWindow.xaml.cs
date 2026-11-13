@@ -408,6 +408,12 @@ namespace ZaloMultiWorkspace.Views.Dialogs
             Close();
         }
 
+        /// <summary>Hiện thử thông báo góc màn hình (theo lựa chọn "Ẩn nội dung tin nhắn" đang chọn, chưa cần Lưu)</summary>
+        private void TestToast_Click(object sender, RoutedEventArgs e)
+        {
+            (Owner as MainWindow)?.ShowTestToast(HideContentSwitch.IsChecked == true);
+        }
+
         /// <summary>Đổi giao diện áp dụng và lưu ngay, không cần bấm Lưu cài đặt</summary>
         private void ThemeSegment_Click(object sender, RoutedEventArgs e)
         {

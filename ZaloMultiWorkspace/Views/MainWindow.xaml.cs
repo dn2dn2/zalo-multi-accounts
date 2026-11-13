@@ -20,6 +20,8 @@ namespace ZaloMultiWorkspace.Views
         /// <summary>Mở cùng Windows: chạy ngầm ở khay, không hiện cửa sổ</summary>
         public bool StartHiddenInTray { get; set; }
         private readonly Services.TrayBadgeService _trayBadge = new();
+        /// <summary>Thông báo tin nhắn ở góc màn hình (tạo khi có tin đầu tiên)</summary>
+        private ToastWindow? _toast;
         public Services.GlobalHotkeyService GlobalHotkeys { get; } = new();
         private bool _capturing;
         private bool _isExplicitExit = false;
@@ -72,11 +74,14 @@ namespace ZaloMultiWorkspace.Views
                 }
             };
 
-            // Nhận sự kiện thông báo tin nhắn mới để hiển thị Balloon góc màn hình
-            ViewModel.OnTrayBalloonNotificationRequested += (title, message) =>
+            // Thông báo tin nhắn kiểu Zalo PC ở góc màn hình
+            ViewModel.OnToastRequested += req => EnsureToast().ShowToast(req);
+            ViewModel.SessionManager.OnNotificationAvatar += (profile, sender, dataUrl) =>
             {
-                TrayIcon.ShowBalloonTip(title, message, BalloonIcon.Info);
-                _balloonIsMessage = true;
+                // Ảnh có thể tới trước thẻ (thông báo chung hiện trễ) -> cửa sổ nhớ ảnh cho lúc thẻ hiện
+                var img = Services.AvatarFetcher.FromDataUrl(dataUrl);
+                if (img != null)
+                    EnsureToast().ApplyAvatar(profile, sender, img);
             };
         }
 
@@ -88,6 +93,30 @@ namespace ZaloMultiWorkspace.Views
         {
             _balloonIsMessage = false;
             TrayIcon.ShowBalloonTip(title, message, icon);
+        }
+
+        /// <summary>Thông báo thử (nút "Thử" trong Cài đặt > Thông báo)</summary>
+        public void ShowTestToast(bool hideContent)
+        {
+            var acc = ViewModel.SelectedAccount ?? ViewModel.Accounts.FirstOrDefault()
+                      ?? new ZaloAccountProfile { DisplayName = "Tài khoản mẫu" };
+            EnsureToast().ShowToast(new ToastRequest(acc, "Chat Workspace Pro",
+                "Đây là thông báo thử. Bấm vào để mở cuộc chat, rê chuột lên để giữ lại.", null, hideContent, IsTest: true));
+        }
+
+        private ToastWindow EnsureToast()
+        {
+            if (_toast == null)
+            {
+                _toast = new ToastWindow();
+                _toast.Clicked += async r =>
+                {
+                    RestoreFromTray();
+                    if (!ViewModel.IsLocked && !r.IsTest)
+                        await ViewModel.JumpToChatAsync(r.Profile, r.Sender);
+                };
+            }
+            return _toast;
         }
 
         private bool? _trayShowingBadge;
@@ -446,6 +475,7 @@ namespace ZaloMultiWorkspace.Views
             else
             {
                 ViewModel.SessionManager.HibernateAllSessions(ViewModel.Accounts);
+                _toast?.Close();
                 GlobalHotkeys.Dispose();
                 TrayIcon.Dispose();
                 _trayBadge.Dispose();

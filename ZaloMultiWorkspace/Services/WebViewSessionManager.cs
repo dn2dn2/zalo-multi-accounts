@@ -30,7 +30,10 @@ namespace ZaloMultiWorkspace.Services
         private const double NotifyDedupSeconds = 3.0;
 
         public event Action<ZaloAccountProfile, int>? OnUnreadCountChanged;
-        public event Action<ZaloAccountProfile, string, string>? OnNewMessageNotification;
+        /// <summary>Tin nhắn mới: tài khoản, người gửi, nội dung, địa chỉ ảnh avatar (có thể rỗng)</summary>
+        public event Action<ZaloAccountProfile, string, string, string?>? OnNewMessageNotification;
+        /// <summary>Trang chat gửi ảnh avatar (data URL) của người gửi sau thông báo</summary>
+        public event Action<ZaloAccountProfile, string, string>? OnNotificationAvatar;
         public event Action<ZaloAccountProfile, string>? OnShortcutTriggered;
         public event Action<ZaloAccountProfile, string>? OnActiveChatChanged;
         public event Action<ZaloAccountProfile>? OnAvatarUpdated;
@@ -401,7 +404,7 @@ namespace ZaloMultiWorkspace.Services
                                 if (titleCount > oldCount)
                                 {
                                     RaiseGenericNewMessage(profile, profile.DisplayName,
-                                        $"Có {titleCount} tin nhắn chưa đọc trên {profile.PlatformName}");
+                                        $"Có {titleCount} tin nhắn chưa đọc trên {profile.PlatformName}", null);
                                 }
                             }
                         });
@@ -488,7 +491,7 @@ namespace ZaloMultiWorkspace.Services
                                 string bodyText = !string.IsNullOrWhiteSpace(msg.Body)
                                     ? msg.Body
                                     : $"Có {msg.Count} tin nhắn chưa đọc";
-                                RaiseGenericNewMessage(profile, senderName, bodyText);
+                                RaiseGenericNewMessage(profile, senderName, bodyText, msg.IconUrl);
                             }
                             else
                             {
@@ -508,7 +511,13 @@ namespace ZaloMultiWorkspace.Services
                             OnNewMessageNotification?.Invoke(
                                 profile,
                                 !string.IsNullOrWhiteSpace(msg.Sender) ? msg.Sender : profile.DisplayName,
-                                !string.IsNullOrWhiteSpace(msg.Body) ? msg.Body : $"Bạn có tin nhắn {profile.PlatformName} mới");
+                                !string.IsNullOrWhiteSpace(msg.Body) ? msg.Body : $"Bạn có tin nhắn {profile.PlatformName} mới",
+                                msg.IconUrl);
+                            break;
+
+                        case "NOTIFY_AVATAR":
+                            if (!string.IsNullOrEmpty(msg.Avatar))
+                                OnNotificationAvatar?.Invoke(profile, msg.Sender ?? string.Empty, msg.Avatar);
                             break;
 
                         case "AVATAR_UPDATE":
@@ -555,7 +564,7 @@ namespace ZaloMultiWorkspace.Services
         /// Thông báo "chung" (từ tiêu đề / bộ đếm) được trì hoãn ngắn và bỏ qua nếu quanh thời điểm đó
         /// đã có thông báo chi tiết từ window.Notification của Zalo (tránh 2-3 thông báo cho cùng 1 tin).
         /// </summary>
-        private async void RaiseGenericNewMessage(ZaloAccountProfile profile, string sender, string body)
+        private async void RaiseGenericNewMessage(ZaloAccountProfile profile, string sender, string body, string? iconUrl)
         {
             DateTime requestedAt = DateTime.Now;
             await Task.Delay(GenericNotifyDelayMs);
@@ -564,7 +573,7 @@ namespace ZaloMultiWorkspace.Services
                 return;
 
             _lastNotifyAt[profile.Id] = DateTime.Now;
-            OnNewMessageNotification?.Invoke(profile, sender, body);
+            OnNewMessageNotification?.Invoke(profile, sender, body, iconUrl);
         }
 
         private async Task UpdateProfileAvatarAsync(ZaloAccountProfile profile, string rawAvatarUrl)

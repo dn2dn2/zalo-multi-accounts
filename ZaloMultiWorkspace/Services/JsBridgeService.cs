@@ -118,6 +118,10 @@ namespace ZaloMultiWorkspace.Services
         public string? Sender { get; set; }
         public string? Body { get; set; }
         public string? Text { get; set; }
+        /// <summary>Địa chỉ ảnh avatar người gửi (thông báo)</summary>
+        public string? IconUrl { get; set; }
+        /// <summary>Ảnh avatar dạng data URL (NOTIFY_AVATAR)</summary>
+        public string? Avatar { get; set; }
     }
 
     public class JsBridgeService
@@ -271,6 +275,46 @@ namespace ZaloMultiWorkspace.Services
 
     let lastCappedSent = false;
 
+    // Avatar người gửi cho thông báo: trang tự tải ảnh (qua proxy của tài khoản) rồi gửi data URL sang ứng dụng.
+    // Gửi riêng sau thông báo (NOTIFY_AVATAR) để thông báo hiện ngay, không phải chờ ảnh.
+    const __cwpAvatarCache = new Map();
+    function toAvatarData(url) {{
+        return new Promise(resolve => {{
+            if (!url || typeof url !== 'string') return resolve('');
+            if (url.startsWith('data:image')) return resolve(url.length < 400000 ? url : '');
+            if (__cwpAvatarCache.has(url)) return resolve(__cwpAvatarCache.get(url));
+            let done = false;
+            const finish = (v) => {{ if (!done) {{ done = true; resolve(v); }} }};
+            setTimeout(() => finish(''), 4000);
+            try {{
+                fetch(url, {{ credentials: 'include' }})
+                    .then(r => r.ok ? r.blob() : null)
+                    .then(b => {{
+                        if (!b || b.size > 300000 || !/^image\//.test(b.type || '')) return finish('');
+                        const fr = new FileReader();
+                        fr.onload = () => {{
+                            const v = String(fr.result || '');
+                            if (__cwpAvatarCache.size > 60) __cwpAvatarCache.clear();
+                            __cwpAvatarCache.set(url, v);
+                            finish(v);
+                        }};
+                        fr.onerror = () => finish('');
+                        fr.readAsDataURL(b);
+                    }})
+                    .catch(() => finish(''));
+            }} catch (e) {{ finish(''); }}
+        }});
+    }}
+    function sendAvatar(sender, url) {{
+        if (!url || !window.chrome || !window.chrome.webview) return;
+        toAvatarData(url).then(av => {{
+            if (av) window.chrome.webview.postMessage({{ type: 'NOTIFY_AVATAR', sender: sender || '', avatar: av }});
+        }});
+    }}
+    function iconOf(options) {{
+        try {{ return (options && (options.icon || options.image)) ? String(options.icon || options.image) : ''; }} catch (e) {{ return ''; }}
+    }}
+
     // 1. Hook window.Notification để bắt ngay thông báo tin nhắn mới từ Zalo Web & giữ lại hàm onclick gốc
     window.__cwpLastNotifClick = null;
     try {{
@@ -326,8 +370,10 @@ namespace ZaloMultiWorkspace.Services
                 window.chrome.webview.postMessage({{
                     type: 'NEW_MESSAGE_NOTIFY',
                     sender: senderName,
-                    body: (options && options.body) ? options.body : 'Bạn có tin nhắn mới'
+                    body: (options && options.body) ? options.body : 'Bạn có tin nhắn mới',
+                    iconUrl: iconOf(options)
                 }});
+                sendAvatar(senderName, iconOf(options));
             }}
             return wrapper;
         }}
@@ -346,8 +392,10 @@ namespace ZaloMultiWorkspace.Services
                         window.chrome.webview.postMessage({{
                             type: 'NEW_MESSAGE_NOTIFY',
                             sender: title || 'Tin nhắn mới',
-                            body: (options && options.body) ? options.body : 'Bạn có tin nhắn mới'
+                            body: (options && options.body) ? options.body : 'Bạn có tin nhắn mới',
+                            iconUrl: iconOf(options)
                         }});
+                        sendAvatar(title || 'Tin nhắn mới', iconOf(options));
                     }}
                 }} catch (e) {{}}
                 return origShow.apply(this, arguments);
@@ -420,7 +468,9 @@ namespace ZaloMultiWorkspace.Services
                     const sender = nameEl ? (nameEl.innerText || '').trim() : '';
                     const body = msgEl ? (msgEl.innerText || '').trim() : '';
                     if (sender || body) {{
-                        return {{ sender: sender || 'Khách hàng', body: body || 'Tin nhắn mới' }};
+                        const imgEl = item.querySelector('img');
+                        const icon = imgEl ? (imgEl.currentSrc || imgEl.src || '') : '';
+                        return {{ sender: sender || 'Khách hàng', body: body || 'Tin nhắn mới', icon }};
                     }}
                 }}
             }}
@@ -441,8 +491,10 @@ namespace ZaloMultiWorkspace.Services
                     count: currentUnread,
                     capped: lastCapped,
                     sender: preview ? preview.sender : '',
-                    body: preview ? preview.body : ''
+                    body: preview ? preview.body : '',
+                    iconUrl: preview ? preview.icon : ''
                 }});
+                if (preview && preview.icon) sendAvatar(preview.sender, preview.icon);
             }}
         }}
     }}
