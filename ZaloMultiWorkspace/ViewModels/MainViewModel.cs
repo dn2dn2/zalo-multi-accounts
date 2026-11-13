@@ -75,6 +75,28 @@ namespace ZaloMultiWorkspace.ViewModels
         public bool IsCustomerNotesTabActive => ActiveDrawerTab == DrawerTab.Notes;
         public bool IsTranslateTabActive => ActiveDrawerTab == DrawerTab.Translate;
 
+        partial void OnIsRightDrawerOpenChanged(bool value)
+        {
+            if (DatabaseService == null) return;
+            var settings = DatabaseService.GetSettings();
+            if (settings.IsRightDrawerOpen != value)
+            {
+                settings.IsRightDrawerOpen = value;
+                DatabaseService.SaveSettings(settings);
+            }
+        }
+
+        partial void OnActiveDrawerTabChanged(DrawerTab value)
+        {
+            if (DatabaseService == null) return;
+            var settings = DatabaseService.GetSettings();
+            if (settings.LastActiveDrawerTab != value)
+            {
+                settings.LastActiveDrawerTab = value;
+                DatabaseService.SaveSettings(settings);
+            }
+        }
+
         // --- Mini-CRM Note fields ---
         [ObservableProperty]
         private string _newNoteCustomerName = string.Empty;
@@ -332,9 +354,12 @@ namespace ZaloMultiWorkspace.ViewModels
 
             LoadInitialData();
 
-            ThemeMode = DatabaseService.GetSettings().ThemeMode;
+            var initialSettings = DatabaseService.GetSettings();
+            ThemeMode = initialSettings.ThemeMode;
+            IsRightDrawerOpen = initialSettings.IsRightDrawerOpen;
+            ActiveDrawerTab = initialSettings.LastActiveDrawerTab;
             LoadTranslationSettings();
-            IsHorizontalLayout = DatabaseService.GetSettings().AccountLayout == AccountLayoutMode.Horizontal;
+            IsHorizontalLayout = initialSettings.AccountLayout == AccountLayoutMode.Horizontal;
             ThemeService.EffectiveThemeChanged += _ => OnPropertyChanged(nameof(ThemeTooltipHint));
 
             // Giai đoạn 3 & 5: Bộ đếm định kỳ mỗi 5 giây đo RAM, kiểm tra Ngủ đông tự động & Khóa tự động
@@ -749,12 +774,15 @@ namespace ZaloMultiWorkspace.ViewModels
             var settings = DatabaseService.GetSettings();
             bool doNotDisturb = settings.IsInDoNotDisturb(now);
 
+            // Nhớ tài khoản và người gửi để bấm thanh thông báo hoặc popup ở khay đều mở đúng cuộc chat
+            // (kể cả khi đã tắt thanh thông báo trong ứng dụng)
+            NotificationAccount = profile;
+            _notificationSenderName = string.Equals(senderName, profile.DisplayName, StringComparison.OrdinalIgnoreCase)
+                ? string.Empty
+                : (senderName ?? string.Empty);
+
             if (settings.ShowInAppBanner)
             {
-                NotificationAccount = profile;
-                _notificationSenderName = string.Equals(senderName, profile.DisplayName, StringComparison.OrdinalIgnoreCase)
-                    ? string.Empty
-                    : (senderName ?? string.Empty);
                 NotificationHeader = $"🔔 [{profile.DisplayName}] {senderName}";
                 NotificationBody = bodyText;
                 IsInAppNotificationVisible = true;
@@ -804,20 +832,14 @@ namespace ZaloMultiWorkspace.ViewModels
             if (targetAccount != null)
             {
                 await SelectAccountAsync(targetAccount);
-                bool wasRunning = SessionManager.IsSessionRunning(targetAccount.Id);
-                if (!wasRunning)
-                {
+                if (!SessionManager.IsSessionRunning(targetAccount.Id))
                     await StartOrWakeSelectedAccountAsync();
-                    await Task.Delay(1200);
-                }
-                else
-                {
-                    await Task.Delay(120);
-                }
 
                 var webView = SessionManager.GetWebView(targetAccount.Id);
                 if (webView != null)
                 {
+                    // Tài khoản vừa mở lại: Zalo/Telegram cần vài giây mới hiện danh sách chat -> chờ tối đa 12 giây
+                    await JsBridgeService.WaitForConversationListAsync(webView, targetAccount.Platform, TimeSpan.FromSeconds(12));
                     await JsBridgeService.OpenConversationBySenderAsync(webView, targetAccount.Platform, targetSender);
                 }
             }

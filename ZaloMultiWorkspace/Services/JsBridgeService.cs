@@ -250,6 +250,7 @@ namespace ZaloMultiWorkspace.Services
             }}
             const wrapper = {{
                 title: senderName,
+                at: Date.now(),
                 body: (options && options.body) ? options.body : '',
                 close: function() {{
                     if (nativeNotif && nativeNotif.close) {{
@@ -684,6 +685,34 @@ namespace ZaloMultiWorkspace.Services
         /// Kết hợp 3 tầng: (1) onclick gốc của Notification, (2) tìm theo tên người gửi trong danh sách hội thoại,
         /// (3) mở cuộc hội thoại chưa đọc đầu tiên nếu không có tên cụ thể.
         /// </summary>
+        /// <summary>Chờ danh sách hội thoại hiện trên trang (trang vừa tải lại). Trả về false nếu hết thời gian.</summary>
+        public async Task<bool> WaitForConversationListAsync(WebView2 webView, ChatPlatform platform, TimeSpan timeout)
+        {
+            if (webView?.CoreWebView2 == null)
+                return false;
+            string sel = JsonSerializer.Serialize(GetSelectors(platform).ConversationItemSelector);
+            string script = $"(function() {{ try {{ return document.querySelectorAll({sel}).length; }} catch (e) {{ return 0; }} }})();";
+            var deadline = DateTime.Now + timeout;
+            while (DateTime.Now < deadline)
+            {
+                try
+                {
+                    string res = await webView.CoreWebView2.ExecuteScriptAsync(script);
+                    if (int.TryParse(res, out int n) && n > 0)
+                    {
+                        await Task.Delay(150); // cho danh sách vẽ xong
+                        return true;
+                    }
+                }
+                catch
+                {
+                    // Trang đang tải lại -> thử lại
+                }
+                await Task.Delay(300);
+            }
+            return false;
+        }
+
         public async Task<bool> OpenConversationBySenderAsync(WebView2 webView, ChatPlatform platform, string? senderName)
         {
             if (webView?.CoreWebView2 == null)
@@ -725,12 +754,14 @@ namespace ZaloMultiWorkspace.Services
 
     let opened = false;
 
-    // Tầng 1: Kích hoạt hàm onclick gốc của Notification từ Zalo/Telegram nếu trùng người gửi
-    if (window.__cwpLastNotifClick && typeof window.__cwpLastNotifClick.__triggerClick === 'function') {{
-        const lastTitle = norm(window.__cwpLastNotifClick.title);
+    // Tầng 1: Kích hoạt hàm onclick gốc của Notification từ Zalo/Telegram.
+    // Chỉ dùng thông báo trong 10 phút gần đây; có tên người gửi thì tên phải trùng khớp.
+    const lastNotif = window.__cwpLastNotifClick;
+    if (lastNotif && typeof lastNotif.__triggerClick === 'function' && (Date.now() - (lastNotif.at || 0)) < 600000) {{
+        const lastTitle = norm(lastNotif.title);
         const wanted = norm(targetSender);
-        if (!wanted || !lastTitle || lastTitle === wanted || lastTitle.includes(wanted) || wanted.includes(lastTitle)) {{
-            if (window.__cwpLastNotifClick.__triggerClick()) {{
+        if (!wanted || lastTitle === wanted) {{
+            if (lastNotif.__triggerClick()) {{
                 opened = true;
             }}
         }}
@@ -740,7 +771,8 @@ namespace ZaloMultiWorkspace.Services
     const items = CONV_ITEM_SEL ? Array.from(document.querySelectorAll(CONV_ITEM_SEL)) : [];
     const wantedNorm = norm(targetSender);
 
-    if (wantedNorm && items.length > 0) {{
+    // Tầng 2: chỉ chạy khi tầng 1 chưa mở được (tránh bấm thêm sang cuộc chat có tên gần giống)
+    if (!opened && wantedNorm && items.length > 0) {{
         let exactUnread = null;
         let exactAny = null;
         let partialUnread = null;
