@@ -123,6 +123,21 @@ namespace ZaloMultiWorkspace.Services
         private void EnsureSeedData()
         {
             using var db = OpenDb();
+            var settingsCol = db.GetCollection<AppSettings>("settings");
+            var existingSettings = settingsCol.FindById(1);
+
+            // Nếu đã có bản ghi settings trên máy (đã qua lần mở đầu tiên), chỉ đánh dấu cờ IsInitialDataSeeded = true
+            // để khi người dùng xóa trắng hết tin mẫu hoặc tài khoản về 0 thì lần mở sau KHÔNG tự nạp lại dữ liệu mẫu.
+            if (existingSettings != null)
+            {
+                if (!existingSettings.IsInitialDataSeeded)
+                {
+                    existingSettings.IsInitialDataSeeded = true;
+                    settingsCol.Upsert(existingSettings);
+                }
+                return;
+            }
+
             var accounts = db.GetCollection<ZaloAccountProfile>("accounts");
             if (accounts.Count() == 0)
             {
@@ -197,11 +212,7 @@ namespace ZaloMultiWorkspace.Services
                 });
             }
 
-            var settings = db.GetCollection<AppSettings>("settings");
-            if (settings.Count() == 0)
-            {
-                settings.Insert(new AppSettings());
-            }
+            settingsCol.Upsert(new AppSettings { Id = 1, IsInitialDataSeeded = true });
         }
 
         // --- Accounts CRUD ---

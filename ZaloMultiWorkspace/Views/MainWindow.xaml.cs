@@ -76,7 +76,18 @@ namespace ZaloMultiWorkspace.Views
             ViewModel.OnTrayBalloonNotificationRequested += (title, message) =>
             {
                 TrayIcon.ShowBalloonTip(title, message, BalloonIcon.Info);
+                _balloonIsMessage = true;
             };
+        }
+
+        /// <summary>Thông báo đang hiện ở khay là tin nhắn mới (bấm vào thì mở cuộc chat)</summary>
+        private bool _balloonIsMessage;
+
+        /// <summary>Thông báo khay không phải tin nhắn (chụp màn hình, phím tắt...): bấm vào không mở cuộc chat</summary>
+        private void ShowInfoBalloon(string title, string message, BalloonIcon icon)
+        {
+            _balloonIsMessage = false;
+            TrayIcon.ShowBalloonTip(title, message, icon);
         }
 
         private bool? _trayShowingBadge;
@@ -135,6 +146,15 @@ namespace ZaloMultiWorkspace.Views
             if (sender is FrameworkElement fe && fe.Tag is ZaloAccountProfile profile)
             {
                 await ViewModel.SelectAccountAsync(profile);
+            }
+        }
+
+        private void NotificationBanner_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (ViewModel.SwitchToNotifiedAccountCommand.CanExecute(null))
+            {
+                ViewModel.SwitchToNotifiedAccountCommand.Execute(null);
+                e.Handled = true;
             }
         }
 
@@ -417,7 +437,7 @@ namespace ZaloMultiWorkspace.Views
                 // Có thể tắt trong Cài đặt > Chung > "Báo khi ẩn xuống khay"
                 if (settings.ShowTrayHintOnClose)
                 {
-                    TrayIcon.ShowBalloonTip(
+                    ShowInfoBalloon(
                         "Chat Workspace Pro",
                         "Ứng dụng vẫn chạy ở khay hệ thống. Nhấp đúp vào biểu tượng để mở lại.",
                         BalloonIcon.Info);
@@ -435,6 +455,18 @@ namespace ZaloMultiWorkspace.Views
         private void TrayIcon_TrayMouseDoubleClick(object sender, RoutedEventArgs e)
         {
             RestoreFromTray();
+        }
+
+        private void TrayIcon_TrayBalloonTipClicked(object sender, RoutedEventArgs e)
+        {
+            if (!_balloonIsMessage)
+                return;
+            _balloonIsMessage = false;
+            RestoreFromTray();
+            if (!ViewModel.IsLocked && ViewModel.SwitchToNotifiedAccountCommand.CanExecute(null))
+            {
+                ViewModel.SwitchToNotifiedAccountCommand.Execute(null);
+            }
         }
 
         private void TrayOpen_Click(object sender, RoutedEventArgs e)
@@ -508,7 +540,7 @@ namespace ZaloMultiWorkspace.Views
                     if (failed.Count > 0)
                     {
                         string keys = string.Join(", ", failed.Select(a => settings.GetHotkey(a).ToString()));
-                        TrayIcon.ShowBalloonTip("Phím tắt đang bị trùng",
+                        ShowInfoBalloon("Phím tắt đang bị trùng",
                             $"{keys} đang được chương trình khác dùng (vd Zalo PC). Đổi phím trong Cài đặt > Chung > Phím tắt.",
                             BalloonIcon.Warning);
                     }
@@ -582,7 +614,7 @@ namespace ZaloMultiWorkspace.Views
                 var win = ScreenCaptureWindow.Create(settings.GetScreenshotFolder(), sendHint);
                 if (win == null)
                 {
-                    TrayIcon.ShowBalloonTip("Chụp màn hình", "Không chụp được màn hình.", BalloonIcon.Error);
+                    ShowInfoBalloon("Chụp màn hình", "Không chụp được màn hình.", BalloonIcon.Error);
                     return;
                 }
                 win.ShowDialog();
@@ -590,13 +622,13 @@ namespace ZaloMultiWorkspace.Views
                 switch (win.Result)
                 {
                     case CaptureResult.Saved:
-                        TrayIcon.ShowBalloonTip("Đã lưu ảnh chụp", win.SavedPath ?? string.Empty, BalloonIcon.Info);
+                        ShowInfoBalloon("Đã lưu ảnh chụp", win.SavedPath ?? string.Empty, BalloonIcon.Info);
                         break;
                     case CaptureResult.SendToChat when win.ResultImage != null:
                         if (ViewModel.IsLocked || acc == null)
                         {
                             ScreenCaptureWindow.SetClipboardImage(win.ResultImage);
-                            TrayIcon.ShowBalloonTip("Chụp màn hình",
+                            ShowInfoBalloon("Chụp màn hình",
                                 ViewModel.IsLocked ? "Ứng dụng đang khóa. Ảnh đã chép vào bộ nhớ tạm." : "Chưa chọn tài khoản. Ảnh đã chép vào bộ nhớ tạm.",
                                 BalloonIcon.Info);
                             break;
@@ -606,7 +638,7 @@ namespace ZaloMultiWorkspace.Views
                         await Task.Delay(150);
                         if (!await ViewModel.PasteImageToCurrentChatAsync(win.ResultImage))
                         {
-                            TrayIcon.ShowBalloonTip("Chụp màn hình",
+                            ShowInfoBalloon("Chụp màn hình",
                                 "Chưa tìm thấy ô chat (hãy mở một cuộc trò chuyện). Ảnh đã chép vào bộ nhớ tạm, bấm Ctrl+V để dán.",
                                 BalloonIcon.Info);
                         }
@@ -615,7 +647,7 @@ namespace ZaloMultiWorkspace.Views
             }
             catch (Exception ex)
             {
-                TrayIcon.ShowBalloonTip("Chụp màn hình", "Lỗi: " + ex.Message, BalloonIcon.Error);
+                ShowInfoBalloon("Chụp màn hình", "Lỗi: " + ex.Message, BalloonIcon.Error);
             }
             finally
             {

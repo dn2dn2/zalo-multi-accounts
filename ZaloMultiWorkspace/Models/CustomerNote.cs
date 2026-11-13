@@ -138,6 +138,15 @@ namespace ZaloMultiWorkspace.Models
 
         /// <summary>Chế độ giao diện: System (theo Windows, mặc định) / Light / Dark</summary>
         public Services.AppThemeMode ThemeMode { get; set; } = Services.AppThemeMode.System;
+
+        /// <summary>Đã khởi tạo dữ liệu mẫu lần đầu tiên (tránh tự nạp lại 3 tin mẫu mặc định khi người dùng xóa hết về 0)</summary>
+        public bool IsInitialDataSeeded { get; set; } = false;
+
+        /// <summary>Trạng thái đóng/mở thanh công cụ bên phải lần cuối</summary>
+        public bool IsRightDrawerOpen { get; set; } = true;
+
+        /// <summary>Tab đang chọn ở thanh bên phải lần cuối (Tin mẫu / Ghi chú / Dịch)</summary>
+        public ViewModels.DrawerTab LastActiveDrawerTab { get; set; } = ViewModels.DrawerTab.QuickReply;
     }
 }
 

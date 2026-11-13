@@ -236,20 +236,65 @@ namespace ZaloMultiWorkspace.Services
 
     let lastCappedSent = false;
 
-    // 1. Hook window.Notification để bắt ngay thông báo tin nhắn mới từ Zalo Web
+    // 1. Hook window.Notification để bắt ngay thông báo tin nhắn mới từ Zalo Web & giữ lại hàm onclick gốc
+    window.__cwpLastNotifClick = null;
     try {{
         const OriginalNotification = window.Notification;
         function CustomNotification(title, options) {{
+            const senderName = title || 'Tin nhắn Zalo mới';
+            const clickListeners = [];
+            let onClickProp = null;
+            let nativeNotif = null;
+            if (OriginalNotification) {{
+                try {{ nativeNotif = new OriginalNotification(title, options); }} catch (e) {{}}
+            }}
+            const wrapper = {{
+                title: senderName,
+                at: Date.now(),
+                body: (options && options.body) ? options.body : '',
+                close: function() {{
+                    if (nativeNotif && nativeNotif.close) {{
+                        try {{ nativeNotif.close(); }} catch (e) {{}}
+                    }}
+                }},
+                addEventListener: function(type, fn) {{
+                    if (type === 'click' && typeof fn === 'function') clickListeners.push(fn);
+                    if (nativeNotif && nativeNotif.addEventListener) {{
+                        try {{ nativeNotif.addEventListener(type, fn); }} catch (e) {{}}
+                    }}
+                }},
+                removeEventListener: function(type, fn) {{
+                    if (nativeNotif && nativeNotif.removeEventListener) {{
+                        try {{ nativeNotif.removeEventListener(type, fn); }} catch (e) {{}}
+                    }}
+                }},
+                get onclick() {{ return onClickProp; }},
+                set onclick(fn) {{
+                    onClickProp = fn;
+                    if (nativeNotif) {{
+                        try {{ nativeNotif.onclick = fn; }} catch (e) {{}}
+                    }}
+                }},
+                __triggerClick: function() {{
+                    let fired = false;
+                    if (typeof onClickProp === 'function') {{
+                        try {{ onClickProp.call(nativeNotif || this, new Event('click')); fired = true; }} catch (e) {{}}
+                    }}
+                    for (const fn of clickListeners) {{
+                        try {{ fn.call(nativeNotif || this, new Event('click')); fired = true; }} catch (e) {{}}
+                    }}
+                    return fired;
+                }}
+            }};
+            window.__cwpLastNotifClick = wrapper;
             if (window.chrome && window.chrome.webview) {{
                 window.chrome.webview.postMessage({{
                     type: 'NEW_MESSAGE_NOTIFY',
-                    sender: title || 'Tin nhắn Zalo mới',
+                    sender: senderName,
                     body: (options && options.body) ? options.body : 'Bạn có tin nhắn mới'
                 }});
             }}
-            if (OriginalNotification) {{
-                try {{ return new OriginalNotification(title, options); }} catch (e) {{}}
-            }}
+            return wrapper;
         }}
         CustomNotification.permission = 'granted';
         CustomNotification.requestPermission = function(cb) {{
@@ -633,6 +678,172 @@ namespace ZaloMultiWorkspace.Services
 
             webView.Focus();
             await webView.CoreWebView2.ExecuteScriptAsync(script);
+        }
+
+        /// <summary>
+        /// Mở trực tiếp cuộc hội thoại của người gửi vừa nhắn tin và đặt con trỏ vào ô nhập tin nhắn.
+        /// Kết hợp 3 tầng: (1) onclick gốc của Notification, (2) tìm theo tên người gửi trong danh sách hội thoại,
+        /// (3) mở cuộc hội thoại chưa đọc đầu tiên nếu không có tên cụ thể.
+        /// </summary>
+        /// <summary>Chờ danh sách hội thoại hiện trên trang (trang vừa tải lại). Trả về false nếu hết thời gian.</summary>
+        public async Task<bool> WaitForConversationListAsync(WebView2 webView, ChatPlatform platform, TimeSpan timeout)
+        {
+            if (webView?.CoreWebView2 == null)
+                return false;
+            string sel = JsonSerializer.Serialize(GetSelectors(platform).ConversationItemSelector);
+            string script = $"(function() {{ try {{ return document.querySelectorAll({sel}).length; }} catch (e) {{ return 0; }} }})();";
+            var deadline = DateTime.Now + timeout;
+            while (DateTime.Now < deadline)
+            {
+                try
+                {
+                    string res = await webView.CoreWebView2.ExecuteScriptAsync(script);
+                    if (int.TryParse(res, out int n) && n > 0)
+                    {
+                        await Task.Delay(150); // cho danh sách vẽ xong
+                        return true;
+                    }
+                }
+                catch
+                {
+                    // Trang đang tải lại -> thử lại
+                }
+                await Task.Delay(300);
+            }
+            return false;
+        }
+
+        public async Task<bool> OpenConversationBySenderAsync(WebView2 webView, ChatPlatform platform, string? senderName)
+        {
+            if (webView?.CoreWebView2 == null)
+                return false;
+
+            var sel = GetSelectors(platform);
+            string senderJson = JsonSerializer.Serialize(senderName ?? string.Empty);
+            string convItemSelJson = JsonSerializer.Serialize(sel.ConversationItemSelector);
+            string convNameSelJson = JsonSerializer.Serialize(sel.ConversationNameSelector);
+            string convBadgeSelJson = JsonSerializer.Serialize(sel.ConversationItemBadgeSelector);
+            string chatInputSelJson = JsonSerializer.Serialize(sel.ChatInputSelector);
+
+            string script = $@"
+(function() {{
+    const targetSender = ({senderJson} || '').trim();
+    const CONV_ITEM_SEL = {convItemSelJson};
+    const CONV_NAME_SEL = {convNameSelJson};
+    const CONV_BADGE_SEL = {convBadgeSelJson};
+    const CHAT_INPUT_SEL = {chatInputSelJson};
+
+    function norm(s) {{
+        return (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    }}
+
+    function simulateItemClick(item) {{
+        if (!item) return false;
+        try {{ item.scrollIntoView({{ block: 'nearest' }}); }} catch (e) {{}}
+        const clickTarget = item.querySelector('.ListItem-button, a, .conv-item-title__name, .conv-item-body') || item;
+        const targets = clickTarget !== item ? [clickTarget, item] : [item];
+        for (const el of targets) {{
+            for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {{
+                try {{
+                    el.dispatchEvent(new MouseEvent(type, {{ view: window, bubbles: true, cancelable: true, button: 0, buttons: 1 }}));
+                }} catch (e) {{}}
+            }}
+        }}
+        return true;
+    }}
+
+    let opened = false;
+
+    // Tầng 1: Kích hoạt hàm onclick gốc của Notification từ Zalo/Telegram.
+    // Chỉ dùng thông báo trong 10 phút gần đây; có tên người gửi thì tên phải trùng khớp.
+    const lastNotif = window.__cwpLastNotifClick;
+    if (lastNotif && typeof lastNotif.__triggerClick === 'function' && (Date.now() - (lastNotif.at || 0)) < 600000) {{
+        const lastTitle = norm(lastNotif.title);
+        const wanted = norm(targetSender);
+        if (!wanted || lastTitle === wanted) {{
+            if (lastNotif.__triggerClick()) {{
+                opened = true;
+            }}
+        }}
+    }}
+
+    // Tầng 2: Tìm trong danh sách hội thoại trên DOM theo tên người gửi
+    const items = CONV_ITEM_SEL ? Array.from(document.querySelectorAll(CONV_ITEM_SEL)) : [];
+    const wantedNorm = norm(targetSender);
+
+    // Tầng 2: chỉ chạy khi tầng 1 chưa mở được (tránh bấm thêm sang cuộc chat có tên gần giống)
+    if (!opened && wantedNorm && items.length > 0) {{
+        let exactUnread = null;
+        let exactAny = null;
+        let partialUnread = null;
+        let partialAny = null;
+
+        for (const item of items) {{
+            const nameEl = CONV_NAME_SEL ? item.querySelector(CONV_NAME_SEL) : null;
+            const itemName = norm(nameEl ? (nameEl.innerText || nameEl.textContent) : '');
+            if (!itemName) continue;
+
+            const badgeEl = CONV_BADGE_SEL ? item.querySelector(CONV_BADGE_SEL) : null;
+            const hasUnread = !!(badgeEl && badgeEl.offsetWidth > 0 && badgeEl.offsetHeight > 0);
+
+            if (itemName === wantedNorm) {{
+                if (hasUnread && !exactUnread) exactUnread = item;
+                if (!exactAny) exactAny = item;
+            }} else if (itemName.includes(wantedNorm) || wantedNorm.includes(itemName)) {{
+                if (hasUnread && !partialUnread) partialUnread = item;
+                if (!partialAny) partialAny = item;
+            }}
+        }}
+
+        const bestMatch = exactUnread || exactAny || partialUnread || partialAny;
+        if (bestMatch) {{
+            simulateItemClick(bestMatch);
+            opened = true;
+        }}
+    }}
+
+    // Tầng 3: Dự phòng — nếu chưa mở được theo tên, mở cuộc hội thoại đầu tiên đang có badge chưa đọc
+    if (!opened && items.length > 0 && CONV_BADGE_SEL) {{
+        for (const item of items) {{
+            const badges = item.querySelectorAll(CONV_BADGE_SEL);
+            let hasVisibleBadge = false;
+            for (const b of badges) {{
+                const style = window.getComputedStyle(b);
+                if (style && style.display !== 'none' && style.visibility !== 'hidden' && parseFloat(style.opacity) !== 0 && b.offsetWidth > 0) {{
+                    hasVisibleBadge = true;
+                    break;
+                }}
+            }}
+            if (hasVisibleBadge) {{
+                simulateItemClick(item);
+                opened = true;
+                break;
+            }}
+        }}
+    }}
+
+    // Đặt con trỏ vào ô nhập tin nhắn và đồng bộ lại số tin chưa đọc
+    setTimeout(() => {{
+        try {{
+            const inputEl = CHAT_INPUT_SEL ? document.querySelector(CHAT_INPUT_SEL) : null;
+            if (inputEl) inputEl.focus();
+            if (window.checkZaloUnreadNow) window.checkZaloUnreadNow();
+        }} catch (e) {{}}
+    }}, 220);
+
+    return opened;
+}})();";
+
+            try
+            {
+                webView.Focus();
+                string res = await webView.CoreWebView2.ExecuteScriptAsync(script);
+                return res == "true";
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }
