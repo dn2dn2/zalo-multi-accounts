@@ -55,6 +55,11 @@
                             <ColumnDefinition Width="10"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                         <Button Grid.Column="0" Style="{StaticResource PlatformCardStyle}" Tag="{Binding IsZaloSelected}"
                                 Command="{Binding SelectPlatformCommand}" CommandParameter="Zalo" IsEnabled="{Binding CanChangePlatform}"
                                 AutomationProperties.Name="Zalo">
@@ -78,7 +83,44 @@
                                 <TextBlock Text="web.telegram.org" FontSize="10" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.Text.Muted}"/>
                             </StackPanel>
                         </Button>
+                        <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource PlatformCardStyle}" Tag="{Binding IsWhatsAppSelected}"
+                                Command="{Binding SelectPlatformCommand}" CommandParameter="WhatsApp" IsEnabled="{Binding CanChangePlatform}"
+                                AutomationProperties.Name="WhatsApp">
+                            <StackPanel>
+                                <Border Width="36" Height="36" CornerRadius="10" Background="#25D366" HorizontalAlignment="Center">
+                                    <TextBlock Text="&#xE717;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="White" FontSize="16"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="WhatsApp" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,6,0,0" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                                <TextBlock Text="web.whatsapp.com" FontSize="10" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Row="2" Grid.Column="2" Style="{StaticResource PlatformCardStyle}" Tag="{Binding IsMessengerSelected}"
+                                Command="{Binding SelectPlatformCommand}" CommandParameter="Messenger" IsEnabled="{Binding CanChangePlatform}"
+                                AutomationProperties.Name="Messenger">
+                            <StackPanel>
+                                <Border Width="36" Height="36" CornerRadius="10" HorizontalAlignment="Center">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,1" EndPoint="1,0">
+                                            <GradientStop Color="#0A7CFF" Offset="0"/>
+                                            <GradientStop Color="#A033FF" Offset="0.6"/>
+                                            <GradientStop Color="#FF5C87" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <TextBlock Text="&#xE8BD;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="White" FontSize="16"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Messenger" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,6,0,0" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                                <TextBlock Text="messenger.com" FontSize="10" HorizontalAlignment="Center" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                            </StackPanel>
+                        </Button>
                     </Grid>
+                    <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,-8,0,16"
+                               Visibility="{Binding IsWhatsAppSelected, Converter={StaticResource EditHintVis}}"
+                               Text="Đăng nhập: mở WhatsApp trên điện thoại › Thiết bị đã liên kết › Liên kết thiết bị, rồi quét mã QR. Một số điện thoại liên kết được tối đa 4 thiết bị."/>
+                    <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,-8,0,16"
+                               Visibility="{Binding IsMessengerSelected, Converter={StaticResource EditHintVis}}"
+                               Text="Đăng nhập bằng tài khoản Facebook. Nên dùng mỗi tài khoản với một proxy cố định để Facebook không hỏi xác minh nhiều lần."/>
                     <TextBlock Text="Không đổi được nền tảng sau khi đã tạo tài khoản." FontSize="11"
                                Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,-8,0,16"
                                Visibility="{Binding IsEditMode, Converter={StaticResource EditHintVis}}"/>

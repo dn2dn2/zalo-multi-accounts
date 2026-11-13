@@ -71,6 +71,39 @@ namespace ZaloMultiWorkspace.Services
             ConversationNameSelector = ".fullName, .title h3, .peer-title",
             ConversationPreviewSelector = ".last-message, .subtitle, .dialog-subtitle"
         };
+
+        /// <summary>WhatsApp Web (web.whatsapp.com). Tên lớp CSS bị mã hóa nên dựa vào thuộc tính ổn định (role, aria, data-icon).</summary>
+        public static PlatformSelectors DefaultWhatsApp() => new()
+        {
+            ChatInputSelector = "footer div[contenteditable='true'][role='textbox'], footer div[contenteditable='true']",
+            SendButtonSelector = "footer button[aria-label='Send'], footer button[aria-label='Gửi'], footer span[data-icon='send'], footer span[data-icon='wds-ic-send-filled']",
+            ActiveChatTitleSelector = "#main header span[dir='auto']",
+            NavBadgeMaxLeft = 0,
+            // Badge số tin chưa đọc trong danh sách chat có aria-label kiểu "3 unread messages" / "3 tin nhắn chưa đọc"
+            ConversationUnreadBadgeSelector = "#pane-side span[aria-label*='unread' i], #pane-side span[aria-label*='chưa đọc' i]",
+            ConversationItemSelector = "#pane-side [role='listitem'], #pane-side [role='row']",
+            ConversationItemBadgeSelector = "span[aria-label*='unread' i], span[aria-label*='chưa đọc' i]",
+            ConversationBadgeRequiresNumber = false,
+            ConversationMutedSelector = "[data-icon='muted'], [data-icon*='mute']",
+            ConversationNameSelector = "span[dir='auto'][title]",
+            ConversationPreviewSelector = "span[dir='ltr'], span[dir='auto']:not([title])"
+        };
+
+        /// <summary>Messenger (www.messenger.com). Tên lớp CSS bị mã hóa nên dựa vào role/aria; số tin chưa đọc lấy từ tiêu đề "(3) Messenger".</summary>
+        public static PlatformSelectors DefaultMessenger() => new()
+        {
+            ChatInputSelector = "[role='main'] div[contenteditable='true'][role='textbox'], div[contenteditable='true'][role='textbox']",
+            SendButtonSelector = "[role='main'] div[role='button'][aria-label*='enter' i], [role='main'] div[role='button'][aria-label*='gửi' i]",
+            ActiveChatTitleSelector = "[role='main'] h1 span, [role='main'] h2 span[dir='auto']",
+            NavBadgeMaxLeft = 0,
+            ConversationUnreadBadgeSelector = "[role='navigation'] [role='row'] [aria-label*='unread' i], [role='navigation'] [role='row'] [aria-label*='chưa đọc' i]",
+            ConversationItemSelector = "[role='navigation'] [role='row'], [role='grid'] [role='row']",
+            ConversationItemBadgeSelector = "[aria-label*='unread' i], [aria-label*='chưa đọc' i]",
+            ConversationBadgeRequiresNumber = false,
+            ConversationMutedSelector = "[aria-label*='muted' i], [aria-label*='tắt thông báo' i], [aria-label*='tắt tiếng' i]",
+            ConversationNameSelector = "span[dir='auto']",
+            ConversationPreviewSelector = "span[dir='auto'] + span, div > span[dir='auto']"
+        };
     }
 
     public class JsBridgeMessage
@@ -92,7 +125,9 @@ namespace ZaloMultiWorkspace.Services
         private readonly Dictionary<ChatPlatform, PlatformSelectors> _selectors = new()
         {
             [ChatPlatform.Zalo] = PlatformSelectors.DefaultZalo(),
-            [ChatPlatform.Telegram] = PlatformSelectors.DefaultTelegram()
+            [ChatPlatform.Telegram] = PlatformSelectors.DefaultTelegram(),
+            [ChatPlatform.WhatsApp] = PlatformSelectors.DefaultWhatsApp(),
+            [ChatPlatform.Messenger] = PlatformSelectors.DefaultMessenger()
         };
 
         public PlatformSelectors GetSelectors(ChatPlatform platform) =>

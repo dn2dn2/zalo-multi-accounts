@@ -3,6 +3,19 @@
 Mọi thay đổi đáng chú ý của **Chat Workspace Pro** (trước đây là Zalo Multi-Workspace Pro) được ghi tại đây.
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/), phiên bản theo [Semantic Versioning](https://semver.org/lang/vi/).
 
+## [1.2.0] - 2026-11-13
+
+### Thêm mới
+- **WhatsApp** (web.whatsapp.com) và **Messenger** (messenger.com) *(thử nghiệm)*: chọn nền tảng khi thêm tài khoản (4 thẻ: Zalo, Telegram, WhatsApp, Messenger). Mỗi tài khoản có dữ liệu đăng nhập và proxy riêng, huy hiệu và màu riêng trên tab.
+  - WhatsApp đăng nhập bằng mã QR (Thiết bị đã liên kết). Messenger đăng nhập bằng tài khoản Facebook.
+  - Đã kiểm tra: đăng nhập WhatsApp, ô nhập tin, tên cuộc chat đang mở. Chưa tinh chỉnh: đếm tin chưa đọc, bỏ qua chat tắt tiếng và nút gửi của WhatsApp và Messenger.
+- **Bấm thông báo để mở thẳng cuộc chat** của người gửi: bấm thanh thông báo trong ứng dụng hoặc popup ở khay sẽ chuyển sang đúng tài khoản và mở cuộc chat đó. Tài khoản đang tạm dừng sẽ được mở lại trước.
+- Nhớ trạng thái đóng/mở bảng bên phải và tab đang chọn (Tin mẫu / Ghi chú / Dịch).
+
+### Sửa lỗi
+- Xóa hết tin mẫu hoặc tài khoản mẫu thì lần mở sau không còn tự nạp lại dữ liệu mẫu.
+- Bấm thông báo khay không phải tin nhắn (chụp màn hình, phím tắt…) không còn nhảy sang cuộc chat.
+
 ## [1.1.1] - 2026-11-09
 
 ### Sửa lỗi
@@ -132,6 +145,7 @@ Phiên bản phát hành đầu tiên dưới tên **Chat Workspace Pro**.
 - Quản lý nhiều tài khoản Zalo, mỗi tài khoản có dữ liệu đăng nhập và proxy riêng.
 - Tin nhắn mẫu, ghi chú khách hàng, khóa ứng dụng bằng mã PIN, sao lưu và khôi phục dữ liệu.
 
+[1.2.0]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.0.0...v1.0.1
