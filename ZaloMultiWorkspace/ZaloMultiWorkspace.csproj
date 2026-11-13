@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <AssemblyName>ChatWorkspacePro</AssemblyName>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <Authors>Nguyễn Duy Nhất</Authors>
     <Copyright>© 2026 Nguyễn Duy Nhất</Copyright>
     <Product>Chat Workspace Pro</Product>
