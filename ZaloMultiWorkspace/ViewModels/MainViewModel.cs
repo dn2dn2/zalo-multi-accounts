@@ -290,7 +290,8 @@ namespace ZaloMultiWorkspace.ViewModels
 
         public bool ShowPlaceholderOverlay => !IsSelectedSessionRunning;
 
-        public event Action<string, string>? OnTrayBalloonNotificationRequested;
+        /// <summary>Hiện thông báo tin nhắn ở góc màn hình (kiểu Zalo PC, có avatar người gửi)</summary>
+        public event Action<Views.ToastRequest>? OnToastRequested;
 
         // --- Phím tắt (hiển thị trong tooltip, đổi được trong Cài đặt) ---
         [ObservableProperty]
@@ -746,7 +747,7 @@ namespace ZaloMultiWorkspace.ViewModels
             RefreshStatusMetrics();
         }
 
-        private void HandleNewMessageNotification(ZaloAccountProfile profile, string senderName, string bodyText)
+        private void HandleNewMessageNotification(ZaloAccountProfile profile, string senderName, string bodyText, string? avatarUrl)
         {
             RefreshStatusMetrics();
 
@@ -805,18 +806,7 @@ namespace ZaloMultiWorkspace.ViewModels
 
             if (settings.ShowToastPopup)
             {
-                if (settings.HideMessageContent)
-                {
-                    OnTrayBalloonNotificationRequested?.Invoke(
-                        $"{profile.PlatformName} [{profile.DisplayName}]",
-                        "Bạn có tin nhắn mới");
-                }
-                else
-                {
-                    OnTrayBalloonNotificationRequested?.Invoke(
-                        $"{profile.PlatformName} [{profile.DisplayName}] - {senderName}",
-                        bodyText);
-                }
+                OnToastRequested?.Invoke(new Views.ToastRequest(profile, senderName ?? profile.DisplayName, bodyText, avatarUrl, settings.HideMessageContent));
             }
         }
 
@@ -829,6 +819,15 @@ namespace ZaloMultiWorkspace.ViewModels
             IsInAppNotificationVisible = false;
             _toastDismissTimer.Stop();
 
+            await JumpToChatAsync(targetAccount, targetSender);
+        }
+
+        /// <summary>Chuyển sang tài khoản và mở cuộc chat của người gửi (rỗng = cuộc chat chưa đọc đầu tiên)</summary>
+        public async Task JumpToChatAsync(ZaloAccountProfile? targetAccount, string? sender)
+        {
+            string targetSender = string.Equals(sender, targetAccount?.DisplayName, StringComparison.OrdinalIgnoreCase)
+                ? string.Empty
+                : (sender ?? string.Empty);
             if (targetAccount != null)
             {
                 await SelectAccountAsync(targetAccount);
