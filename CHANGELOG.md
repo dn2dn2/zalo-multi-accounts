@@ -3,6 +3,17 @@
 Mọi thay đổi đáng chú ý của **Chat Workspace Pro** (trước đây là Zalo Multi-Workspace Pro) được ghi tại đây.
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/vi/1.1.0/), phiên bản theo [Semantic Versioning](https://semver.org/lang/vi/).
 
+## [1.3.0] - 2026-11-13
+
+### Thêm mới
+- **Thông báo kiểu Zalo PC** ở góc phải dưới màn hình, thay cho popup mặc định của Windows:
+  - Avatar người gửi (hoặc chữ cái đầu của tên), huy hiệu nền tảng, tên in đậm, nội dung tối đa 2 dòng và tài khoản nhận tin.
+  - Bấm vào thông báo để mở đúng tài khoản và cuộc chat; nút ✕ để đóng.
+  - Tự ẩn sau 6 giây (rê chuột lên để giữ lại), xếp chồng tối đa 3 thông báo, theo giao diện sáng/tối.
+  - Không lấy mất con trỏ của cửa sổ đang dùng, không hiện trên taskbar hay Alt+Tab.
+  - Avatar được tải qua đúng proxy của từng tài khoản.
+- Nút **Thử** trong Cài đặt › Thông báo để xem trước thông báo.
+
 ## [1.2.0] - 2026-11-13
 
 ### Thêm mới
@@ -145,6 +156,7 @@ Phiên bản phát hành đầu tiên dưới tên **Chat Workspace Pro**.
 - Quản lý nhiều tài khoản Zalo, mỗi tài khoản có dữ liệu đăng nhập và proxy riêng.
 - Tin nhắn mẫu, ghi chú khách hàng, khóa ứng dụng bằng mã PIN, sao lưu và khôi phục dữ liệu.
 
+[1.3.0]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/dn2dn2/zalo-multi-accounts/compare/v1.0.1...v1.1.0
